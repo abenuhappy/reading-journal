@@ -125,6 +125,7 @@ reading_journal.html (단일 파일)
 | 2026-04-17 | [기능추가] | Vercel 배포 완료 (https://reading-journal-psi.vercel.app) | PM 요청 |
 | 2026-04-17 | [기획변경] | 데이터 저장소를 LocalStorage → Firebase Firestore로 전환, Google 로그인 추가 | 멀티 기기 접근 요구 |
 | 2026-04-17 | [기획변경] | 공개 읽기 / 소유자 전용 편집 분리 — 비로그인 시 목록·상세 열람 가능, 편집 버튼 숨김 | PM 요청 |
+| 2026-04-17 | [내부수정] | 소유자 UID 고정 — 특정 Google 계정만 편집 가능하도록 수정 | 타인 로그인 편집 차단 |
 
 ---
 

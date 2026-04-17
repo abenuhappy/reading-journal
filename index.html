@@ -501,7 +501,7 @@
         goList();
       };
 
-      const isOwner = !!user;
+      const isOwner = user?.uid === 'tuIXqYWofGa39ujsoPvcVrviXUC2';
 
       /* 초기 로딩 */
       if (!fbReady || booksLoading) return (
