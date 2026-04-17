@@ -56,20 +56,20 @@
     /* ── Firebase 헬퍼 ─────────────────────────── */
     const fb = () => window._fb;
 
-    const loadBooks = async (uid) => {
+    const loadBooks = async () => {
       const { db, collection, getDocs, query, orderBy } = fb();
-      const snap = await getDocs(query(collection(db, 'users', uid, 'books'), orderBy('createdAt', 'desc')));
+      const snap = await getDocs(query(collection(db, 'books'), orderBy('createdAt', 'desc')));
       return snap.docs.map(d => d.data());
     };
 
-    const saveBook = async (uid, book) => {
+    const saveBook = async (book) => {
       const { db, doc, setDoc } = fb();
-      await setDoc(doc(db, 'users', uid, 'books', String(book.id)), book);
+      await setDoc(doc(db, 'books', String(book.id)), book);
     };
 
-    const removeBook = async (uid, bookId) => {
+    const removeBook = async (bookId) => {
       const { db, doc, deleteDoc } = fb();
-      await deleteDoc(doc(db, 'users', uid, 'books', String(bookId)));
+      await deleteDoc(doc(db, 'books', String(bookId)));
     };
 
     /* ── 상수 ─────────────────────────────────── */
@@ -349,7 +349,7 @@
     };
 
     /* ── 책 상세 보기 ────────────────────────── */
-    const BookDetail = ({ book, onEdit, onDelete }) => {
+    const BookDetail = ({ book, isOwner, onEdit, onDelete }) => {
       const readingDays = book.startDate && book.endDate
         ? Math.ceil((new Date(book.endDate) - new Date(book.startDate)) / (1000*60*60*24)) + 1
         : null;
@@ -411,40 +411,22 @@
             </div>
           )}
 
-          <div className="flex gap-3">
-            <button onClick={onEdit}
-              className="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-white rounded-xl font-bold transition-colors shadow-md text-sm">
-              ✏️ 수정하기
-            </button>
-            <button onClick={onDelete}
-              className="py-3 px-5 border border-red-300 text-red-400 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium">
-              🗑️ 삭제
-            </button>
-          </div>
+          {/* 수정/삭제 버튼은 소유자만 표시 */}
+          {isOwner && (
+            <div className="flex gap-3">
+              <button onClick={onEdit}
+                className="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-white rounded-xl font-bold transition-colors shadow-md text-sm">
+                ✏️ 수정하기
+              </button>
+              <button onClick={onDelete}
+                className="py-3 px-5 border border-red-300 text-red-400 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium">
+                🗑️ 삭제
+              </button>
+            </div>
+          )}
         </div>
       );
     };
-
-    /* ── 로그인 화면 ─────────────────────────── */
-    const LoginScreen = ({ onLogin }) => (
-      <div className="min-h-screen bg-amber-50 flex flex-col items-center justify-center gap-6 px-4">
-        <div className="text-6xl">📚</div>
-        <h1 className="text-2xl font-bold text-amber-800">나의 독서록</h1>
-        <p className="text-gray-400 text-sm text-center">읽은 책을 기록하고 어디서든 확인하세요</p>
-        <button
-          onClick={onLogin}
-          className="bg-white border border-gray-200 rounded-xl px-6 py-3.5 flex items-center gap-3 shadow-sm hover:shadow-md transition-all font-medium text-gray-700 text-sm"
-        >
-          <svg className="w-5 h-5" viewBox="0 0 24 24">
-            <path fill="#4285F4" d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"/>
-            <path fill="#34A853" d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"/>
-            <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z"/>
-            <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z"/>
-          </svg>
-          Google로 로그인
-        </button>
-      </div>
-    );
 
     /* ── 메인 App ────────────────────────────── */
     const App = () => {
@@ -452,6 +434,7 @@
       const [user, setUser]                 = useState(null);
       const [authLoading, setAuthLoading]   = useState(true);
       const [books, setBooks]               = useState([]);
+      const [booksLoading, setBooksLoading] = useState(true);
       const [view, setView]                 = useState("list");
       const [selectedBook, setSelectedBook] = useState(null);
       const [search, setSearch]             = useState("");
@@ -465,18 +448,21 @@
         return () => window.removeEventListener('firebaseReady', handler);
       }, []);
 
+      /* 책 목록 로드 (로그인 여부 무관) */
+      useEffect(() => {
+        if (!fbReady) return;
+        loadBooks().then(loaded => {
+          setBooks(loaded);
+          setBooksLoading(false);
+        });
+      }, [fbReady]);
+
       /* 인증 상태 감지 */
       useEffect(() => {
         if (!fbReady) return;
         const { auth, onAuthStateChanged } = fb();
-        return onAuthStateChanged(auth, async (u) => {
+        return onAuthStateChanged(auth, (u) => {
           setUser(u);
-          if (u) {
-            const loaded = await loadBooks(u.uid);
-            setBooks(loaded);
-          } else {
-            setBooks([]);
-          }
           setAuthLoading(false);
         });
       }, [fbReady]);
@@ -497,7 +483,7 @@
       const goDetail = (b) => { setSelectedBook(b); setView("detail"); };
 
       const handleSave = async (book) => {
-        await saveBook(user.uid, book);
+        await saveBook(book);
         if (view === "edit") {
           setBooks(prev => prev.map(b => b.id === book.id ? book : b));
           setSelectedBook(book);
@@ -510,20 +496,19 @@
 
       const handleDelete = async () => {
         if (!confirm(`"${selectedBook.title}"을(를) 삭제할까요?`)) return;
-        await removeBook(user.uid, selectedBook.id);
+        await removeBook(selectedBook.id);
         setBooks(prev => prev.filter(b => b.id !== selectedBook.id));
         goList();
       };
 
-      /* 로딩 */
-      if (!fbReady || authLoading) return (
+      const isOwner = !!user;
+
+      /* 초기 로딩 */
+      if (!fbReady || booksLoading) return (
         <div className="min-h-screen bg-amber-50 flex items-center justify-center">
           <div className="text-5xl animate-bounce">📚</div>
         </div>
       );
-
-      /* 로그인 전 */
-      if (!user) return <LoginScreen onLogin={handleLogin} />;
 
       const filtered = books.filter(b => {
         const q = search.toLowerCase();
@@ -567,17 +552,26 @@
                 <h1 className="text-lg font-bold text-amber-800 truncate">{headerTitle}</h1>
               </div>
               <div className="flex items-center gap-2 flex-shrink-0">
-                {view === "list" && (
-                  <>
-                    <button onClick={handleLogout}
+                {!authLoading && (
+                  isOwner ? (
+                    <>
+                      {view === "list" && (
+                        <button onClick={() => setView("add")}
+                          className="bg-amber-400 hover:bg-amber-500 text-white px-4 py-2 rounded-xl font-bold transition-colors text-sm shadow-sm">
+                          + 책 추가
+                        </button>
+                      )}
+                      <button onClick={handleLogout}
+                        className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100">
+                        로그아웃
+                      </button>
+                    </>
+                  ) : (
+                    <button onClick={handleLogin}
                       className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100">
-                      로그아웃
+                      🔑 관리자
                     </button>
-                    <button onClick={() => setView("add")}
-                      className="bg-amber-400 hover:bg-amber-500 text-white px-4 py-2 rounded-xl font-bold transition-colors text-sm shadow-sm">
-                      + 책 추가
-                    </button>
-                  </>
+                  )
                 )}
               </div>
             </div>
@@ -634,14 +628,8 @@
                   ? <div className="text-center py-16 space-y-3">
                       <div className="text-5xl">📖</div>
                       <p className="text-gray-400 text-sm">
-                        {books.length === 0 ? "첫 번째 책을 추가해 보세요!" : "검색 결과가 없습니다."}
+                        {books.length === 0 ? "아직 등록된 책이 없습니다." : "검색 결과가 없습니다."}
                       </p>
-                      {books.length === 0 && (
-                        <button onClick={() => setView("add")}
-                          className="mt-2 bg-amber-400 hover:bg-amber-500 text-white px-6 py-3 rounded-xl font-bold transition-colors shadow-md text-sm">
-                          + 첫 번째 책 추가하기
-                        </button>
-                      )}
                     </div>
                   : <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                       {filtered.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
@@ -650,11 +638,16 @@
               </div>
             )}
 
-            {view === "add" && <BookForm onSave={handleSave} onCancel={goList} />}
+            {view === "add" && isOwner && <BookForm onSave={handleSave} onCancel={goList} />}
             {view === "detail" && selectedBook && (
-              <BookDetail book={selectedBook} onEdit={() => setView("edit")} onDelete={handleDelete} />
+              <BookDetail
+                book={selectedBook}
+                isOwner={isOwner}
+                onEdit={() => setView("edit")}
+                onDelete={handleDelete}
+              />
             )}
-            {view === "edit" && selectedBook && (
+            {view === "edit" && selectedBook && isOwner && (
               <BookForm book={selectedBook} onSave={handleSave} onCancel={() => setView("detail")} />
             )}
           </main>

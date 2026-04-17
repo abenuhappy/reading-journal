@@ -103,7 +103,8 @@ reading_journal.html (단일 파일)
 - [x] Firebase 프로젝트 생성 (reading-journal-bd425)
 - [x] Google 로그인 연동 (Firebase Authentication)
 - [x] Firestore 데이터 저장 (LocalStorage 대체)
-- [ ] Firebase 승인 도메인에 Vercel URL 등록
+- [x] Firebase 승인 도메인에 Vercel URL 등록
+- [x] 공개 읽기 / 소유자 전용 편집 모드 분리
 
 ---
 
@@ -123,6 +124,7 @@ reading_journal.html (단일 파일)
 | 2026-04-17 | [기능추가] | GitHub 저장소 생성 완료 (abenuhappy/reading-journal) | 배포 진행 |
 | 2026-04-17 | [기능추가] | Vercel 배포 완료 (https://reading-journal-psi.vercel.app) | PM 요청 |
 | 2026-04-17 | [기획변경] | 데이터 저장소를 LocalStorage → Firebase Firestore로 전환, Google 로그인 추가 | 멀티 기기 접근 요구 |
+| 2026-04-17 | [기획변경] | 공개 읽기 / 소유자 전용 편집 분리 — 비로그인 시 목록·상세 열람 가능, 편집 버튼 숨김 | PM 요청 |
 
 ---
 
