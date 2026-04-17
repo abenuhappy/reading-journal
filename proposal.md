@@ -94,10 +94,16 @@ reading_journal.html (단일 파일)
 - [x] 모바일 반응형 최적화
 - [x] 애니메이션 및 전환 효과
 
-### Phase 4: 배포 (진행 중)
+### Phase 4: 배포 ✅
 - [x] index.html 생성 (Vercel 진입점)
-- [ ] GitHub 저장소 생성 및 push (reading-journal, public)
-- [ ] Vercel 연동 및 배포
+- [x] GitHub 저장소 생성 및 push (https://github.com/abenuhappy/reading-journal)
+- [x] Vercel 연동 및 배포 (https://reading-journal-psi.vercel.app)
+
+### Phase 5: 클라우드 데이터 저장 (진행 중)
+- [x] Firebase 프로젝트 생성 (reading-journal-bd425)
+- [x] Google 로그인 연동 (Firebase Authentication)
+- [x] Firestore 데이터 저장 (LocalStorage 대체)
+- [ ] Firebase 승인 도메인에 Vercel URL 등록
 
 ---
 
@@ -114,6 +120,9 @@ reading_journal.html (단일 파일)
 |------|------|-----------|------|
 | 2026-04-17 | [PM직접수정] | Phase 1~3 전 기능 구현 완료 (reading_journal.html) | PM이 직접 구현, 사후 반영 |
 | 2026-04-17 | [기능추가] | Phase 4 배포 단계 추가 — index.html 생성, GitHub/Vercel 배포 | PM 요청 |
+| 2026-04-17 | [기능추가] | GitHub 저장소 생성 완료 (abenuhappy/reading-journal) | 배포 진행 |
+| 2026-04-17 | [기능추가] | Vercel 배포 완료 (https://reading-journal-psi.vercel.app) | PM 요청 |
+| 2026-04-17 | [기획변경] | 데이터 저장소를 LocalStorage → Firebase Firestore로 전환, Google 로그인 추가 | 멀티 기기 접근 요구 |
 
 ---
 
