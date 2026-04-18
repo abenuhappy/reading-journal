@@ -111,6 +111,7 @@ reading_journal.html (단일 파일)
 - [x] 브라우저 콘솔 경고 제거 (Tailwind CDN, Babel standalone)
 - [x] Firebase SDK를 ES 모듈로 직접 import (window._fb 패턴 제거)
 - [x] React production 빌드 자동 적용
+- [x] vercel.json COOP 헤더 설정 (Firebase 로그인 팝업 에러 수정)
 
 ---
 
@@ -133,6 +134,7 @@ reading_journal.html (단일 파일)
 | 2026-04-17 | [기획변경] | 공개 읽기 / 소유자 전용 편집 분리 — 비로그인 시 목록·상세 열람 가능, 편집 버튼 숨김 | PM 요청 |
 | 2026-04-17 | [내부수정] | 소유자 UID 고정 — 특정 Google 계정만 편집 가능하도록 수정 | 타인 로그인 편집 차단 |
 | 2026-04-18 | [기획변경] | Vite 빌드 파이프라인 도입 — CDN 방식에서 npm 빌드 방식으로 전환 | 브라우저 콘솔 경고 제거 |
+| 2026-04-18 | [내부수정] | vercel.json 추가 — COOP 헤더를 same-origin-allow-popups로 설정 | 로그인 팝업 Cross-Origin 에러 수정 |
 
 ---
 
