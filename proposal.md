@@ -135,6 +135,7 @@ reading_journal.html (단일 파일)
 | 2026-04-17 | [내부수정] | 소유자 UID 고정 — 특정 Google 계정만 편집 가능하도록 수정 | 타인 로그인 편집 차단 |
 | 2026-04-18 | [기획변경] | Vite 빌드 파이프라인 도입 — CDN 방식에서 npm 빌드 방식으로 전환 | 브라우저 콘솔 경고 제거 |
 | 2026-04-18 | [내부수정] | vercel.json 추가 — COOP 헤더를 same-origin-allow-popups로 설정 | 로그인 팝업 Cross-Origin 에러 수정 |
+| 2026-04-18 | [내부수정] | vite.config.js server.headers에 COOP same-origin-allow-popups 추가 | 로컬 개발 서버에서도 팝업 에러 재현 방지 |
 
 ---
 
