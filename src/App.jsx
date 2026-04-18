@@ -483,6 +483,24 @@ const App = () => {
     reading:   books.filter(b => b.status === "reading").length,
   }
 
+  // 상태별 그룹 (검색·필터 적용 후)
+  const wantBooks      = filtered.filter(b => b.status === 'want')
+  const readingBooks   = filtered.filter(b => b.status === 'reading')
+  const completedBooks = filtered.filter(b => b.status === 'completed')
+
+  // 완독 책을 완독일 기준 년도별로 그룹화 (최신 년도 → 오래된 년도)
+  const groupByYear = (bookList) => {
+    const byYear = bookList.reduce((acc, b) => {
+      const year = b.endDate ? b.endDate.slice(0, 4) : '미기록'
+      if (!acc[year]) acc[year] = []
+      acc[year].push(b)
+      return acc
+    }, {})
+    return Object.keys(byYear)
+      .sort((a, b) => a === '미기록' ? 1 : b === '미기록' ? -1 : Number(b) - Number(a))
+      .map(year => ({ year, books: byYear[year] }))
+  }
+
   const headerTitle = {
     list:   "📚 나의 독서록",
     add:    "📖 책 추가",
@@ -585,17 +603,84 @@ const App = () => {
               ))}
             </div>
 
-            {filtered.length === 0
-              ? <div className="text-center py-16 space-y-3">
-                  <div className="text-5xl">📖</div>
-                  <p className="text-gray-400 text-sm">
-                    {books.length === 0 ? "아직 등록된 책이 없습니다." : "검색 결과가 없습니다."}
-                  </p>
-                </div>
-              : <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                  {filtered.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
-                </div>
-            }
+            {filtered.length === 0 ? (
+              <div className="text-center py-16 space-y-3">
+                <div className="text-5xl">📖</div>
+                <p className="text-gray-400 text-sm">
+                  {books.length === 0 ? "아직 등록된 책이 없습니다." : "검색 결과가 없습니다."}
+                </p>
+              </div>
+            ) : filterStatus === "all" ? (
+              /* 전체 보기: 상태별 섹션 분리 */
+              <div className="space-y-8">
+                {wantBooks.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-sky-600">읽고 싶음</span>
+                      <div className="flex-1 h-px bg-sky-100" />
+                      <span className="text-xs text-gray-400">{wantBooks.length}권</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {wantBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
+                    </div>
+                  </section>
+                )}
+                {readingBooks.length > 0 && (
+                  <section className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-amber-600">읽는 중</span>
+                      <div className="flex-1 h-px bg-amber-100" />
+                      <span className="text-xs text-gray-400">{readingBooks.length}권</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {readingBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
+                    </div>
+                  </section>
+                )}
+                {completedBooks.length > 0 && (
+                  <section className="space-y-5">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-emerald-600">완독</span>
+                      <div className="flex-1 h-px bg-emerald-100" />
+                      <span className="text-xs text-gray-400">{completedBooks.length}권</span>
+                    </div>
+                    {groupByYear(completedBooks).map(({ year, books: yBooks }) => (
+                      <div key={year} className="space-y-3">
+                        <div className="flex items-center gap-2 pl-1">
+                          <span className="text-xs font-semibold text-gray-400">{year === '미기록' ? '연도 미기록' : `${year}년`}</span>
+                          <div className="flex-1 h-px bg-gray-100" />
+                          <span className="text-xs text-gray-300">{yBooks.length}권</span>
+                        </div>
+                        <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                          {yBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
+                        </div>
+                      </div>
+                    ))}
+                  </section>
+                )}
+              </div>
+            ) : filterStatus === "completed" ? (
+              /* 완독 필터: 년도별 그룹 */
+              <div className="space-y-5">
+                {groupByYear(filtered).map(({ year, books: yBooks }) => (
+                  <div key={year} className="space-y-3">
+                    <div className="flex items-center gap-2">
+                      <span className="text-sm font-bold text-emerald-600">{year === '미기록' ? '연도 미기록' : `${year}년`}</span>
+                      <div className="flex-1 h-px bg-emerald-100" />
+                      <span className="text-xs text-gray-400">{yBooks.length}권</span>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                      {yBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
+                    </div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              /* 읽고 싶음 / 읽는 중 필터: 단순 그리드 */
+              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                {filtered.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
+              </div>
+            )}
           </div>
         )}
 
