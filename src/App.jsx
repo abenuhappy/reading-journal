@@ -95,12 +95,12 @@ const BookCard = ({ book, onClick }) => (
           <DefaultCover title={book.title} />
         </div>
       )}
-    </div>
-    <div className="p-3 space-y-1">
-      {/* 배지를 정보 영역으로 이동 — 표지 색상과 무관하게 항상 선명하게 표시 */}
-      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_COLORS[book.status]}`}>
+      {/* 상태 배지 — 표지 우측 상단 고정 */}
+      <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold shadow ${STATUS_COLORS[book.status]}`}>
         {STATUS_LABELS[book.status]}
       </span>
+    </div>
+    <div className="p-3 space-y-1">
       <h3 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">{book.title}</h3>
       {book.author && <p className="text-gray-400 text-xs">{book.author}</p>}
       <StarRating value={book.rating} readonly size="text-sm" />
