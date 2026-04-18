@@ -99,12 +99,18 @@ reading_journal.html (단일 파일)
 - [x] GitHub 저장소 생성 및 push (https://github.com/abenuhappy/reading-journal)
 - [x] Vercel 연동 및 배포 (https://reading-journal-psi.vercel.app)
 
-### Phase 5: 클라우드 데이터 저장 (진행 중)
+### Phase 5: 클라우드 데이터 저장 ✅
 - [x] Firebase 프로젝트 생성 (reading-journal-bd425)
 - [x] Google 로그인 연동 (Firebase Authentication)
 - [x] Firestore 데이터 저장 (LocalStorage 대체)
 - [x] Firebase 승인 도메인에 Vercel URL 등록
 - [x] 공개 읽기 / 소유자 전용 편집 모드 분리
+
+### Phase 6: 프로덕션 빌드 환경 구축 ✅
+- [x] Vite + React + Tailwind CSS 빌드 파이프라인 도입
+- [x] 브라우저 콘솔 경고 제거 (Tailwind CDN, Babel standalone)
+- [x] Firebase SDK를 ES 모듈로 직접 import (window._fb 패턴 제거)
+- [x] React production 빌드 자동 적용
 
 ---
 
@@ -126,6 +132,7 @@ reading_journal.html (단일 파일)
 | 2026-04-17 | [기획변경] | 데이터 저장소를 LocalStorage → Firebase Firestore로 전환, Google 로그인 추가 | 멀티 기기 접근 요구 |
 | 2026-04-17 | [기획변경] | 공개 읽기 / 소유자 전용 편집 분리 — 비로그인 시 목록·상세 열람 가능, 편집 버튼 숨김 | PM 요청 |
 | 2026-04-17 | [내부수정] | 소유자 UID 고정 — 특정 Google 계정만 편집 가능하도록 수정 | 타인 로그인 편집 차단 |
+| 2026-04-18 | [기획변경] | Vite 빌드 파이프라인 도입 — CDN 방식에서 npm 빌드 방식으로 전환 | 브라우저 콘솔 경고 제거 |
 
 ---
 
