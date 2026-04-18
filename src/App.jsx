@@ -462,12 +462,20 @@ const App = () => {
     </div>
   )
 
-  const filtered = books.filter(b => {
-    const q = search.toLowerCase()
-    const matchQ = !q || b.title.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q)
-    const matchS = filterStatus === "all" || b.status === filterStatus
-    return matchQ && matchS
-  })
+  const STATUS_ORDER = { want: 0, reading: 1, completed: 2 }
+
+  const filtered = books
+    .filter(b => {
+      const q = search.toLowerCase()
+      const matchQ = !q || b.title.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q)
+      const matchS = filterStatus === "all" || b.status === filterStatus
+      return matchQ && matchS
+    })
+    .sort((a, b) => {
+      const so = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
+      if (so !== 0) return so
+      return b.createdAt - a.createdAt
+    })
 
   const stats = {
     total:     books.length,
