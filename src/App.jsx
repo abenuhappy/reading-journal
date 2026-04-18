@@ -82,20 +82,25 @@ const BookCard = ({ book, onClick }) => (
     onClick={() => onClick(book)}
     className="book-card bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer border border-amber-100"
   >
-    <div className="h-44 overflow-hidden relative">
+    {/* 고정 높이 + object-fit: cover 로 이미지 규격 통일 */}
+    <div className="h-44 relative bg-gray-100">
       {book.coverImage
-        ? <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover"
-            onError={(e) => { e.target.style.display="none"; e.target.nextSibling.style.display="flex" }}
+        ? <img src={book.coverImage} alt={book.title}
+            className="absolute inset-0 w-full h-full object-cover"
+            onError={(e) => { e.target.style.display="none" }}
           />
         : null}
-      <div style={{ display: book.coverImage ? "none" : "flex" }} className="w-full h-full">
-        <DefaultCover title={book.title} />
-      </div>
-      <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_COLORS[book.status]}`}>
-        {STATUS_LABELS[book.status]}
-      </span>
+      {!book.coverImage && (
+        <div className="absolute inset-0">
+          <DefaultCover title={book.title} />
+        </div>
+      )}
     </div>
     <div className="p-3 space-y-1">
+      {/* 배지를 정보 영역으로 이동 — 표지 색상과 무관하게 항상 선명하게 표시 */}
+      <span className={`inline-block text-xs px-2 py-0.5 rounded-full font-semibold ${STATUS_COLORS[book.status]}`}>
+        {STATUS_LABELS[book.status]}
+      </span>
       <h3 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">{book.title}</h3>
       {book.author && <p className="text-gray-400 text-xs">{book.author}</p>}
       <StarRating value={book.rating} readonly size="text-sm" />
@@ -295,10 +300,10 @@ const BookForm = ({ book, onSave, onCancel }) => {
             rows={5} />
         </div>
 
-        {/* 버튼 */}
-        <div className="flex gap-3 pb-6">
+        {/* 버튼 — 취소는 텍스트 링크, 주요 액션에 시선 집중 */}
+        <div className="flex items-center gap-4 pb-6">
           <button type="button" onClick={onCancel}
-            className="flex-1 py-3 border border-gray-300 rounded-xl text-gray-600 hover:bg-gray-50 transition-colors font-medium text-sm">
+            className="text-sm text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2 px-1">
             취소
           </button>
           <button type="submit" disabled={saving}
@@ -545,12 +550,13 @@ const App = () => {
               </div>
             )}
 
-            <div className="relative">
+            {/* 검색창 — 통계 카드·필터 탭과 여백 리듬을 맞춤 */}
+            <div className="relative mx-0.5">
               <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
               <input
                 type="text" placeholder="제목 또는 저자로 검색..." value={search}
                 onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-3 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
+                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
               />
               {search && (
                 <button onClick={() => setSearch("")}
