@@ -161,6 +161,7 @@ src/
 | 2026-04-20 | [PM직접수정] | GitHub 원격 저장소 업데이트 확인 및 로컬 동기화 (git merge origin/main) | PM 요청 |
 | 2026-04-20 | [내부수정] | proposal.md 기술 스택·시스템 구조·다음 단계 섹션을 현재 코드 구조(Vite/Firebase)에 맞게 갱신 | 문서-코드 일치 |
 | 2026-04-20 | [기획변경] | Claude Design 핸드오프 기반 전면 디자인 개편 — CSS 변수 테마 시스템(Paper/Library/Minimal), 생성형 책 표지, 3가지 레이아웃(Shelf/Grid/List), Tweaks 패널, 세리프 타이포그래피 도입 | PM 요청 |
+| 2026-04-20 | [내부수정] | Btn 컴포넌트에 whitespace-nowrap·shrink-0 추가, padding 소폭 축소 — 모바일에서 "+ 책 추가" 버튼 줄바꿈 수정 | PM 요청 |
 
 ---
 

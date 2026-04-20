@@ -136,7 +136,7 @@ const StatusBadge = ({ status, small = false }) => {
 
 /* 버튼 */
 const Btn = ({ variant = 'primary', children, className = '', style: extStyle = {}, ...p }) => {
-  const base = 'px-4 py-2.5 rounded-lg font-medium text-sm transition-all active:scale-[0.98]'
+  const base = 'px-3 py-2 rounded-lg font-medium text-sm transition-all active:scale-[0.98] whitespace-nowrap'
   let style = {}
   if (variant === 'primary') style = { background: 'var(--fg)', color: 'var(--bg)' }
   else if (variant === 'outline') style = { border: '1px solid var(--border)', color: 'var(--fg)' }
@@ -321,7 +321,7 @@ const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFi
           </p>
         </div>
         {isOwner && (
-          <Btn variant="primary" onClick={onAdd}>
+          <Btn variant="primary" onClick={onAdd} className="shrink-0">
             <span className="mr-1">＋</span> 책 추가
           </Btn>
         )}
