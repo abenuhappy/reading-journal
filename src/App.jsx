@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from 'react'
+import { useState, useEffect, useRef, useMemo } from 'react'
 import { initializeApp } from 'firebase/app'
 import {
   getAuth, GoogleAuthProvider, signInWithPopup, signOut, onAuthStateChanged,
@@ -16,434 +16,857 @@ const firebaseConfig = {
   appId: "1:684736504672:web:7905485b508d70aa51f405",
 }
 
-const app = initializeApp(firebaseConfig)
+const app  = initializeApp(firebaseConfig)
 const auth = getAuth(app)
-const db = getFirestore(app)
+const db   = getFirestore(app)
 const provider = new GoogleAuthProvider()
 
-/* ── Firebase 헬퍼 ─────────────────────────── */
+/* ── Firebase 헬퍼 */
 const loadBooks = async () => {
   const snap = await getDocs(query(collection(db, 'books'), orderBy('createdAt', 'desc')))
   return snap.docs.map(d => d.data())
 }
+const saveBook   = async (book)   => setDoc(doc(db, 'books', String(book.id)), book)
+const removeBook = async (bookId) => deleteDoc(doc(db, 'books', String(bookId)))
 
-const saveBook = async (book) => {
-  await setDoc(doc(db, 'books', String(book.id)), book)
+/* ── 상수 */
+const STATUS_LABELS = { want: '읽고 싶음', reading: '읽는 중', completed: '완독' }
+const STATUS_ORDER  = ['reading', 'completed', 'want']
+const STATUS_META   = {
+  reading:   { label: '읽는 중',   hint: 'Currently Reading', cssVar: '--status-reading-fg' },
+  completed: { label: '완독',      hint: 'Finished',          cssVar: '--status-done-fg' },
+  want:      { label: '읽고 싶음', hint: 'Want to Read',      cssVar: '--status-want-fg' },
 }
 
-const removeBook = async (bookId) => {
-  await deleteDoc(doc(db, 'books', String(bookId)))
-}
+/* ── 테마 유틸 */
+const THEMES  = [['paper','종이'],['library','서재'],['minimal','미니멀']]
+const LAYOUTS = [['shelf','책장'],['grid','그리드'],['list','리스트']]
 
-/* ── 상수 ─────────────────────────────────── */
-const STATUS_LABELS = { want: "읽고 싶음", reading: "읽는 중", completed: "완독" }
-const STATUS_COLORS = {
-  want:      "bg-sky-100 text-sky-700",
-  reading:   "bg-amber-100 text-amber-700",
-  completed: "bg-emerald-100 text-emerald-700",
+const loadTweaks = () => {
+  try { return JSON.parse(localStorage.getItem('dokseorok_tweaks') || 'null') } catch { return null }
 }
+const DEFAULT_TWEAKS = { theme: 'paper', layout: 'grid' }
 
-/* ── 빈 책 표지 ─────────────────────────── */
-const DefaultCover = ({ title }) => {
-  const bg = ["#f3e8d0","#dbeafe","#dcfce7","#fce7f3","#ede9fe"]
-  const col = bg[title.charCodeAt(0) % bg.length]
+/* ─────────────────────────────────────────────
+   공통 UI 컴포넌트
+───────────────────────────────────────────── */
+
+/* 별점 */
+const StarRating = ({ value = 0, onChange, readonly = false, size = 18 }) => {
+  const [hover, setHover] = useState(0)
   return (
-    <div className="w-full h-full flex items-center justify-center" style={{ background: col }}>
-      <div className="text-center px-2">
-        <div className="text-3xl mb-1">📖</div>
-        <div className="text-xs font-bold text-gray-600 line-clamp-3 leading-snug">{title}</div>
+    <div className="flex gap-0.5" onMouseLeave={() => setHover(0)}>
+      {[1,2,3,4,5].map(s => {
+        const filled = s <= (hover || value)
+        return (
+          <button
+            key={s} type="button"
+            disabled={readonly}
+            onClick={() => onChange?.(s === value ? 0 : s)}
+            onMouseEnter={() => !readonly && setHover(s)}
+            className={`${readonly ? 'cursor-default' : 'cursor-pointer hover:scale-110'} transition-transform leading-none`}
+            style={{ fontSize: size, color: filled ? 'var(--accent)' : 'var(--muted-border)' }}
+          >★</button>
+        )
+      })}
+    </div>
+  )
+}
+
+/* 생성형 책 표지 */
+const BookCover = ({ book, w = 120, h = 180, shadow = true }) => {
+  const coverColor  = book.coverColor  || '#8b2c1e'
+  const coverAccent = book.coverAccent || '#f4e4c1'
+  const shadowStyle = shadow ? { boxShadow: '0 8px 18px rgba(30,20,10,.18), 0 2px 4px rgba(30,20,10,.1)' } : {}
+
+  if (book.coverImage) {
+    return (
+      <img
+        src={book.coverImage} alt={book.title}
+        className="rounded-sm object-cover flex-shrink-0"
+        style={{ width: w, height: h, ...shadowStyle }}
+        onError={(e) => { e.target.style.display = 'none' }}
+      />
+    )
+  }
+
+  const titleSize  = w < 100 ? 13 : w < 140 ? 15 : 18
+  const authorSize = w < 100 ? 9  : 11
+
+  return (
+    <div
+      className="relative rounded-sm overflow-hidden flex flex-col justify-between flex-shrink-0"
+      style={{ width: w, height: h, background: coverColor, color: coverAccent, ...shadowStyle }}
+    >
+      {/* 상단 장식 선 */}
+      <div className="absolute inset-x-3 top-3 h-px opacity-50"  style={{ background: coverAccent }} />
+      <div className="absolute inset-x-3 top-4 h-px opacity-25" style={{ background: coverAccent }} />
+      <div className="pt-8 px-3 flex-1 flex items-center">
+        <div className="font-serif leading-tight" style={{ fontSize: titleSize, fontWeight: 600, wordBreak: 'keep-all' }}>
+          {book.title}
+        </div>
+      </div>
+      <div className="px-3 pb-3">
+        <div className="absolute inset-x-3 bottom-8 h-px opacity-25" style={{ background: coverAccent }} />
+        <div className="absolute inset-x-3 bottom-7 h-px opacity-50"  style={{ background: coverAccent }} />
+        <div className="pt-3 opacity-80" style={{ fontSize: authorSize, letterSpacing: '0.08em' }}>
+          {(book.author || '').toUpperCase()}
+        </div>
       </div>
     </div>
   )
 }
 
-/* ── 별점 컴포넌트 ───────────────────────── */
-const StarRating = ({ value = 0, onChange, readonly = false, size = "text-xl" }) => {
-  const [hover, setHover] = useState(0)
+/* 상태 배지 */
+const StatusBadge = ({ status, small = false }) => {
+  const styles = {
+    want:      { bg: 'var(--status-want-bg)',    fg: 'var(--status-want-fg)' },
+    reading:   { bg: 'var(--status-reading-bg)', fg: 'var(--status-reading-fg)' },
+    completed: { bg: 'var(--status-done-bg)',    fg: 'var(--status-done-fg)' },
+  }[status] || { bg: '#eee', fg: '#555' }
   return (
-    <div className="flex gap-0.5">
-      {[1,2,3,4,5].map(s => (
-        <button
-          key={s} type="button" disabled={readonly}
-          onClick={() => onChange?.(s === value ? 0 : s)}
-          onMouseEnter={() => !readonly && setHover(s)}
-          onMouseLeave={() => !readonly && setHover(0)}
-          className={`${size} transition-transform ${!readonly && "hover:scale-125 cursor-pointer"}
-            ${s <= (hover || value) ? "text-amber-400" : "text-gray-200"}`}
-        >★</button>
+    <span
+      className={`inline-block rounded-full font-medium ${small ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'}`}
+      style={{ background: styles.bg, color: styles.fg, letterSpacing: '-0.01em' }}
+    >
+      {STATUS_LABELS[status]}
+    </span>
+  )
+}
+
+/* 버튼 */
+const Btn = ({ variant = 'primary', children, className = '', style: extStyle = {}, ...p }) => {
+  const base = 'px-4 py-2.5 rounded-lg font-medium text-sm transition-all active:scale-[0.98]'
+  let style = {}
+  if (variant === 'primary') style = { background: 'var(--fg)', color: 'var(--bg)' }
+  else if (variant === 'outline') style = { border: '1px solid var(--border)', color: 'var(--fg)' }
+  else if (variant === 'ghost')   style = { color: 'var(--fg)' }
+  else if (variant === 'danger')  style = { color: '#ef4444' }
+  return (
+    <button {...p} className={`${base} ${className}`} style={{ ...style, ...extStyle }}>
+      {children}
+    </button>
+  )
+}
+
+/* 통계 카드 */
+const StatCard = ({ label, value, hint, accent }) => (
+  <div className="py-4 px-5 rounded-xl" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+    <div className="flex items-baseline gap-2">
+      <div className="font-serif" style={{ fontSize: 32, fontWeight: 500, color: accent || 'var(--fg)', lineHeight: 1 }}>
+        {value}
+      </div>
+      <div className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>
+        {label}
+      </div>
+    </div>
+    {hint && <div className="text-xs mt-1.5" style={{ color: 'var(--muted)' }}>{hint}</div>}
+  </div>
+)
+
+/* ─────────────────────────────────────────────
+   레이아웃 뷰 (Shelf / Grid / List)
+───────────────────────────────────────────── */
+
+/* 책장 뷰 */
+const ShelfView = ({ books, onSelect }) => {
+  const shelves = []
+  for (let i = 0; i < books.length; i += 6) shelves.push(books.slice(i, i + 6))
+  return (
+    <div className="space-y-10">
+      {shelves.map((row, idx) => (
+        <div key={idx} className="relative">
+          <div className="flex items-end gap-4 pb-3 min-h-[240px] px-2">
+            {row.map(b => {
+              const h = 200 + ((b.pages || 200) % 40)
+              return (
+                <div
+                  key={b.id}
+                  onClick={() => onSelect(b)}
+                  className="cursor-pointer transition-all hover:-translate-y-2"
+                  style={{ transform: `rotate(${((b.id * 7) % 5) - 2}deg)` }}
+                >
+                  <BookCover book={b} w={136} h={h} />
+                </div>
+              )
+            })}
+          </div>
+          <div className="h-2 rounded-sm"   style={{ background: 'var(--shelf)',      boxShadow: '0 2px 3px rgba(0,0,0,.15) inset' }} />
+          <div className="h-3 rounded-b-sm" style={{ background: 'var(--shelf-deep)' }} />
+        </div>
       ))}
     </div>
   )
 }
 
-/* ── 책 카드 ─────────────────────────────── */
-const BookCard = ({ book, onClick }) => (
-  <div
-    onClick={() => onClick(book)}
-    className="book-card bg-white rounded-2xl shadow-sm overflow-hidden cursor-pointer border border-amber-100"
-  >
-    {/* 고정 높이 + object-fit: cover 로 이미지 규격 통일 */}
-    <div className="h-44 relative bg-gray-100">
-      {book.coverImage
-        ? <img src={book.coverImage} alt={book.title}
-            className="absolute inset-0 w-full h-full object-cover"
-            onError={(e) => { e.target.style.display="none" }}
-          />
-        : null}
-      {!book.coverImage && (
-        <div className="absolute inset-0">
-          <DefaultCover title={book.title} />
+/* 그리드 뷰 */
+const GridView = ({ books, onSelect }) => (
+  <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-5">
+    {books.map(b => (
+      <div key={b.id} onClick={() => onSelect(b)} className="cursor-pointer group book-card-hover">
+        <div className="mb-3 transition-transform group-hover:-translate-y-1">
+          <BookCover book={b} w="100%" h={220} />
         </div>
-      )}
-      {/* 상태 배지 — 표지 우측 상단 고정 */}
-      <span className={`absolute top-2 right-2 text-xs px-2 py-0.5 rounded-full font-semibold shadow ${STATUS_COLORS[book.status]}`}>
-        {STATUS_LABELS[book.status]}
-      </span>
+        <div className="space-y-1">
+          <div className="font-serif text-[15px] leading-tight" style={{ color: 'var(--fg)', wordBreak: 'keep-all' }}>
+            {b.title}
+          </div>
+          <div className="text-xs" style={{ color: 'var(--muted)' }}>{b.author}</div>
+          <div className="flex items-center justify-between pt-1">
+            <StatusBadge status={b.status} small />
+            {b.rating > 0 && <StarRating value={b.rating} readonly size={11} />}
+          </div>
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
+/* 리스트 뷰 */
+const ListView = ({ books, onSelect }) => (
+  <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+    <div
+      className="grid gap-4 px-5 py-3 text-[10px] uppercase tracking-widest border-b"
+      style={{ gridTemplateColumns: 'auto 2fr 1fr auto auto auto', color: 'var(--muted)', borderColor: 'var(--border)', letterSpacing: '0.14em' }}
+    >
+      <div style={{ width: 44 }} />
+      <div>제목 · 저자</div>
+      <div>상태</div>
+      <div>평점</div>
+      <div>시작일</div>
+      <div>페이지</div>
     </div>
-    <div className="p-3 space-y-1">
-      <h3 className="font-bold text-gray-800 text-sm leading-snug line-clamp-2">{book.title}</h3>
-      {book.author && <p className="text-gray-400 text-xs">{book.author}</p>}
-      <StarRating value={book.rating} readonly size="text-sm" />
-      {book.startDate && (
-        <p className="text-gray-400 text-xs">
-          {book.startDate}{book.endDate ? ` ~ ${book.endDate}` : " ~"}
-        </p>
+    {books.map((b, i) => (
+      <div
+        key={b.id}
+        onClick={() => onSelect(b)}
+        className="grid gap-4 px-5 py-4 items-center cursor-pointer transition-colors"
+        style={{
+          gridTemplateColumns: 'auto 2fr 1fr auto auto auto',
+          borderBottom: i < books.length - 1 ? '1px solid var(--border)' : 'none',
+        }}
+        onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
+        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+      >
+        <BookCover book={b} w={44} h={62} shadow={false} />
+        <div className="min-w-0">
+          <div className="font-serif text-[15px] truncate" style={{ color: 'var(--fg)' }}>{b.title}</div>
+          <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
+            {b.author}{b.genre ? ` · ${b.genre}` : ''}
+          </div>
+        </div>
+        <div><StatusBadge status={b.status} small /></div>
+        <div>
+          {b.rating > 0
+            ? <StarRating value={b.rating} readonly size={12} />
+            : <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span>}
+        </div>
+        <div className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
+          {b.startDate ? b.startDate.slice(5).replace('-', '/') : '—'}
+        </div>
+        <div className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
+          {b.status === 'reading' && b.currentPage ? `${b.currentPage}/${b.pages || '?'}` : b.pages || '—'}
+        </div>
+      </div>
+    ))}
+  </div>
+)
+
+/* ─────────────────────────────────────────────
+   목록 화면 (LibraryView)
+───────────────────────────────────────────── */
+const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFilter, onAdd, isOwner }) => {
+  const stats = useMemo(() => {
+    const completed = books.filter(b => b.status === 'completed')
+    const rated     = books.filter(b => b.rating > 0)
+    return {
+      total:     books.length,
+      completed: completed.length,
+      reading:   books.filter(b => b.status === 'reading').length,
+      want:      books.filter(b => b.status === 'want').length,
+      pages:     completed.reduce((s, b) => s + (b.pages || 0), 0),
+      avgRating: rated.length
+        ? (rated.reduce((s, b) => s + b.rating, 0) / rated.length).toFixed(1)
+        : 0,
+    }
+  }, [books])
+
+  const filtered = useMemo(() => books.filter(b => {
+    const q  = search.trim().toLowerCase()
+    const mq = !q || b.title.toLowerCase().includes(q) || (b.author || '').toLowerCase().includes(q)
+    const ms = filter === 'all' || b.status === filter
+    return mq && ms
+  }), [books, search, filter])
+
+  const View = { shelf: ShelfView, grid: GridView, list: ListView }[layout] || GridView
+
+  const grouped = STATUS_ORDER
+    .map(s => ({ status: s, books: filtered.filter(b => b.status === s) }))
+    .filter(g => g.books.length > 0)
+
+  return (
+    <div className="space-y-8 fade-in">
+      {/* 히어로 */}
+      <div className="flex items-end justify-between pb-6 border-b" style={{ borderColor: 'var(--border)' }}>
+        <div>
+          <div className="text-xs uppercase tracking-[.2em] mb-2" style={{ color: 'var(--muted)' }}>
+            2026 · READING JOURNAL
+          </div>
+          <h1 className="font-serif" style={{ fontSize: 48, lineHeight: 1, fontWeight: 500, letterSpacing: '-.02em' }}>
+            나의 독서록
+          </h1>
+          <p className="mt-3 text-sm" style={{ color: 'var(--muted)' }}>
+            올해 지금까지 <b style={{ color: 'var(--fg)' }}>{stats.completed}권</b>을 완독하고,{' '}
+            <b style={{ color: 'var(--fg)' }}>{stats.pages.toLocaleString()}쪽</b>을 지나왔습니다.
+          </p>
+        </div>
+        {isOwner && (
+          <Btn variant="primary" onClick={onAdd}>
+            <span className="mr-1">＋</span> 책 추가
+          </Btn>
+        )}
+      </div>
+
+      {/* 통계 카드 */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <StatCard
+          label="Books" value={stats.total}
+          hint={`완독 ${stats.completed} · 진행 ${stats.reading} · 예정 ${stats.want}`}
+        />
+        <StatCard label="Pages" value={stats.pages.toLocaleString()} hint="완독 기준 총 쪽수" accent="var(--accent)" />
+        <StatCard label="Rating" value={stats.avgRating || '—'} hint="평균 별점 (5점 만점)" accent="var(--accent)" />
+        <StatCard label="Reading" value={stats.reading} hint="지금 읽는 중" />
+      </div>
+
+      {/* 검색 + 필터 */}
+      <div className="flex flex-wrap items-center gap-3">
+        <div className="relative flex-1 min-w-[220px]">
+          <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-sm" style={{ color: 'var(--muted)' }}>⌕</span>
+          <input
+            value={search}
+            onChange={e => setSearch(e.target.value)}
+            placeholder="제목이나 저자로 검색"
+            className="w-full rounded-lg pl-9 pr-3 py-2.5 text-sm outline-none"
+            style={{ background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)' }}
+          />
+          {search && (
+            <button
+              onClick={() => setSearch('')}
+              className="absolute right-3 top-1/2 -translate-y-1/2 text-lg"
+              style={{ color: 'var(--muted)' }}
+            >×</button>
+          )}
+        </div>
+        <div className="flex gap-1 p-1 rounded-lg" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+          {[['all','전체'],['reading','읽는 중'],['completed','완독'],['want','읽고 싶음']].map(([k, v]) => (
+            <button
+              key={k} onClick={() => setFilter(k)}
+              className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
+              style={filter === k
+                ? { background: 'var(--fg)', color: 'var(--bg)' }
+                : { color: 'var(--muted)' }}
+            >
+              {v}
+              {k !== 'all' && (
+                <span className="ml-1 opacity-60">({books.filter(b => b.status === k).length})</span>
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+
+      {/* 목록 */}
+      {filtered.length === 0 ? (
+        <div className="text-center py-24" style={{ color: 'var(--muted)' }}>
+          <div className="font-serif italic text-lg">아직 책이 없습니다</div>
+          <div className="text-sm mt-1">첫 책을 더해보세요.</div>
+        </div>
+      ) : filter === 'all' ? (
+        /* 전체: 상태별 섹션 분리 */
+        <div className="space-y-14">
+          {grouped.map(g => {
+            const meta = STATUS_META[g.status]
+            return (
+              <section key={g.status} className="space-y-5">
+                <div className="flex items-baseline gap-4">
+                  <div>
+                    <div className="flex items-baseline gap-2.5">
+                      <h2 className="font-serif" style={{ fontSize: 26, fontWeight: 500, letterSpacing: '-.01em', color: 'var(--fg)' }}>
+                        {meta.label}
+                      </h2>
+                      <span className="font-mono tabular-nums text-sm" style={{ color: `var(${meta.cssVar})` }}>
+                        {String(g.books.length).padStart(2, '0')}
+                      </span>
+                    </div>
+                    <div className="text-[10px] uppercase tracking-[.2em] mt-1" style={{ color: 'var(--muted)' }}>
+                      {meta.hint}
+                    </div>
+                  </div>
+                  <div className="flex-1 h-px self-center" style={{ background: 'var(--border)' }} />
+                </div>
+                <View books={g.books} onSelect={onSelect} />
+              </section>
+            )
+          })}
+        </div>
+      ) : (
+        /* 개별 필터: 단순 뷰 */
+        <View books={filtered} onSelect={onSelect} />
       )}
+    </div>
+  )
+}
+
+/* ─────────────────────────────────────────────
+   책 상세 화면
+───────────────────────────────────────────── */
+const ProgressBar = ({ pct }) => (
+  <div className="h-1.5 rounded-full overflow-hidden" style={{ background: 'var(--border)' }}>
+    <div className="h-full rounded-full transition-all" style={{ width: `${pct}%`, background: 'var(--accent)' }} />
+  </div>
+)
+
+const BookDetail = ({ book, onBack, onEdit, onDelete, isOwner }) => {
+  const readingDays = book.startDate && book.endDate
+    ? Math.max(1, Math.ceil((new Date(book.endDate) - new Date(book.startDate)) / 86400000) + 1)
+    : null
+  const pagesPerDay = readingDays && book.pages ? Math.round(book.pages / readingDays) : null
+  const progress    = book.status === 'reading' && book.pages && book.currentPage
+    ? Math.round((book.currentPage / book.pages) * 100)
+    : book.status === 'completed' ? 100 : 0
+
+  return (
+    <div className="fade-in max-w-4xl mx-auto">
+      <button onClick={onBack} className="text-sm mb-8 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+        ← 서재로
+      </button>
+
+      <div className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-10 mb-12">
+        <div className="flex justify-center md:block">
+          <BookCover book={book} w={200} h={300} />
+        </div>
+        <div className="space-y-5">
+          <div>
+            <div className="flex items-center gap-3 mb-3">
+              <StatusBadge status={book.status} />
+              {book.genre && (
+                <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+                  {book.genre}
+                </span>
+              )}
+            </div>
+            <h1 className="font-serif" style={{ fontSize: 40, lineHeight: 1.1, fontWeight: 500, letterSpacing: '-.02em', wordBreak: 'keep-all' }}>
+              {book.title}
+            </h1>
+            {book.author && <p className="text-lg mt-2" style={{ color: 'var(--muted)' }}>{book.author}</p>}
+          </div>
+
+          {book.rating > 0 && (
+            <div className="flex items-center gap-3">
+              <StarRating value={book.rating} readonly size={22} />
+              <span className="text-sm" style={{ color: 'var(--muted)' }}>{book.rating}.0 / 5.0</span>
+            </div>
+          )}
+
+          {book.status === 'reading' && book.pages && (
+            <div className="space-y-2 max-w-md">
+              <div className="flex justify-between text-xs" style={{ color: 'var(--muted)' }}>
+                <span>진행률</span>
+                <span className="tabular-nums">{book.currentPage} / {book.pages} 쪽 · {progress}%</span>
+              </div>
+              <ProgressBar pct={progress} />
+            </div>
+          )}
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 pt-4 border-t" style={{ borderColor: 'var(--border)' }}>
+            {[
+              { label: '시작',   val: book.startDate || '—' },
+              { label: '완독',   val: book.endDate   || '—' },
+              { label: '쪽수',   val: book.pages     || '—' },
+              { label: readingDays ? '소요' : '하루 평균',
+                val:  readingDays ? `${readingDays}일` : pagesPerDay ? `${pagesPerDay}쪽` : '—' },
+            ].map(({ label, val }) => (
+              <div key={label}>
+                <div className="text-[10px] uppercase tracking-widest mb-1" style={{ color: 'var(--muted)', letterSpacing: '.14em' }}>
+                  {label}
+                </div>
+                <div className="text-sm tabular-nums">{val}</div>
+              </div>
+            ))}
+          </div>
+
+          {isOwner && (
+            <div className="flex gap-2 pt-2">
+              <Btn variant="outline" onClick={onEdit}>수정</Btn>
+              <Btn variant="danger"  onClick={onDelete}>삭제</Btn>
+            </div>
+          )}
+        </div>
+      </div>
+
+      {/* 메모 */}
       {book.memos?.length > 0 && (
-        <p className="text-amber-500 text-xs">📝 메모 {book.memos.length}개</p>
+        <section className="mb-12">
+          <div className="flex items-baseline gap-3 mb-6">
+            <h2 className="font-serif" style={{ fontSize: 24, fontWeight: 500 }}>책 속에서</h2>
+            <span className="text-xs uppercase tracking-widest" style={{ color: 'var(--muted)' }}>
+              {book.memos.length} NOTES
+            </span>
+          </div>
+          <div className="space-y-5">
+            {book.memos.map(m => (
+              <figure key={m.id} className="grid gap-6 items-start py-2" style={{ gridTemplateColumns: '60px 1fr' }}>
+                <div className="text-right">
+                  <div className="text-xs uppercase tracking-widest" style={{ color: 'var(--muted)' }}>p.</div>
+                  <div className="font-serif tabular-nums" style={{ fontSize: 20, color: 'var(--fg)' }}>{m.page}</div>
+                </div>
+                <blockquote
+                  className="font-serif italic pl-6"
+                  style={{ fontSize: 18, lineHeight: 1.65, color: 'var(--fg)', borderLeft: '2px solid var(--accent)', wordBreak: 'keep-all' }}
+                >
+                  {m.content}
+                </blockquote>
+              </figure>
+            ))}
+          </div>
+        </section>
+      )}
+
+      {/* 느낀 점 */}
+      {book.feelings && (
+        <section className="mb-12">
+          <h2 className="font-serif mb-6" style={{ fontSize: 24, fontWeight: 500 }}>느낀 점</h2>
+          <div className="rounded-xl p-8" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+            <p className="whitespace-pre-wrap" style={{ fontSize: 16, lineHeight: 1.8, color: 'var(--fg)' }}>
+              {book.feelings}
+            </p>
+          </div>
+        </section>
       )}
     </div>
-  </div>
-)
+  )
+}
 
-/* ── 메모 아이템 ──────────────────────────── */
-const MemoItem = ({ memo, onChange, onDelete }) => (
-  <div className="flex gap-2 items-start bg-amber-50 p-3 rounded-xl border border-amber-100">
-    <input
-      type="number" placeholder="쪽" value={memo.page} min="1"
-      onChange={(e) => onChange({ ...memo, page: e.target.value })}
-      className="w-16 flex-shrink-0 border border-amber-200 rounded-lg px-2 py-1.5 text-sm text-center focus:outline-none focus:ring-2 focus:ring-amber-300 bg-white"
-    />
-    <textarea
-      placeholder="메모 내용을 입력하세요..."
-      value={memo.content}
-      onChange={(e) => onChange({ ...memo, content: e.target.value })}
-      className="flex-1 border border-amber-200 rounded-lg px-2 py-1.5 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 resize-none bg-white"
-      rows={2}
-    />
-    <button type="button" onClick={onDelete}
-      className="flex-shrink-0 text-red-300 hover:text-red-500 transition-colors text-lg leading-none mt-1">
-      ×
-    </button>
-  </div>
-)
+/* ─────────────────────────────────────────────
+   책 등록/수정 폼
+───────────────────────────────────────────── */
+const COVER_PALETTES = [
+  { c: '#8b2c1e', a: '#f4e4c1' },
+  { c: '#1e3a5f', a: '#e8d9b5' },
+  { c: '#2d3e2e', a: '#d4c27a' },
+  { c: '#5b3c8c', a: '#f2cf5e' },
+  { c: '#eae3d2', a: '#1a1a1a' },
+  { c: '#0b1e3a', a: '#c9b356' },
+  { c: '#b8c5a8', a: '#4a2f2f' },
+  { c: '#f3e4a8', a: '#8c4a1e' },
+]
 
-/* ── 책 등록/수정 폼 ─────────────────────── */
 const BookForm = ({ book, onSave, onCancel }) => {
   const isEdit = !!book?.id
   const [form, setForm] = useState(() => book ?? {
-    title:"", author:"", coverImage:"", startDate:"", endDate:"",
-    status:"want", rating:0, memos:[], feelings:""
+    title: '', author: '', coverImage: '', coverColor: '#8b2c1e', coverAccent: '#f4e4c1',
+    startDate: '', endDate: '', status: 'want', rating: 0,
+    pages: '', currentPage: '', genre: '', memos: [], feelings: '',
   })
-  const [urlInput, setUrlInput] = useState(book?.coverImage?.startsWith("http") ? book.coverImage : "")
-  const [saving, setSaving] = useState(false)
+  const [urlInput, setUrlInput] = useState(book?.coverImage?.startsWith('http') ? book.coverImage : '')
+  const [saving, setSaving]     = useState(false)
   const fileRef = useRef(null)
 
-  const set = (key, val) => setForm(f => ({ ...f, [key]: val }))
+  const set = (k, v) => setForm(f => ({ ...f, [k]: v }))
 
   const handleFile = (e) => {
     const file = e.target.files[0]
     if (!file) return
-    if (file.size > 3 * 1024 * 1024) { alert("이미지는 3MB 이하만 가능합니다."); return }
+    if (file.size > 3 * 1024 * 1024) { alert('이미지는 3MB 이하만 가능합니다.'); return }
     const reader = new FileReader()
-    reader.onload = (ev) => { set("coverImage", ev.target.result); setUrlInput("") }
+    reader.onload = ev => { set('coverImage', ev.target.result); setUrlInput('') }
     reader.readAsDataURL(file)
   }
 
-  const handleUrl = (url) => { setUrlInput(url); set("coverImage", url) }
-
-  const addMemo = () => set("memos", [...form.memos, { id: Date.now(), page:"", content:"" }])
-  const updateMemo = (id, updated) => set("memos", form.memos.map(m => m.id === id ? updated : m))
-  const deleteMemo = (id) => set("memos", form.memos.filter(m => m.id !== id))
+  const addMemo    = () => set('memos', [...form.memos, { id: Date.now(), page: '', content: '' }])
+  const updateMemo = (id, u) => set('memos', form.memos.map(m => m.id === id ? u : m))
+  const deleteMemo = (id)    => set('memos', form.memos.filter(m => m.id !== id))
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    if (!form.title.trim()) { alert("책 제목을 입력해 주세요."); return }
+    if (!form.title.trim()) { alert('책 제목을 입력해 주세요.'); return }
     setSaving(true)
-    await onSave({ ...form, id: form.id ?? Date.now(), createdAt: form.createdAt ?? Date.now() })
+    await onSave({
+      ...form,
+      pages:       form.pages       ? Number(form.pages)       : 0,
+      currentPage: form.currentPage ? Number(form.currentPage) : 0,
+      id:          form.id       ?? Date.now(),
+      createdAt:   form.createdAt ?? Date.now(),
+    })
     setSaving(false)
   }
 
+  const inputStyle = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)' }
+  const inputCls   = 'w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-colors'
+  const labelStyle = { color: 'var(--muted)', letterSpacing: '0.12em' }
+  const labelCls   = 'block text-xs uppercase tracking-widest mb-1.5'
+
   return (
-    <div className="max-w-xl mx-auto fade-in">
-      <form onSubmit={handleSubmit} className="space-y-5">
-        {/* 표지 */}
-        <div className="flex gap-4 items-start">
-          <div
-            onClick={() => fileRef.current?.click()}
-            className="w-28 h-40 rounded-xl border-2 border-dashed border-amber-300 overflow-hidden cursor-pointer flex-shrink-0 bg-amber-50 hover:border-amber-400 transition-colors"
-          >
-            {form.coverImage
-              ? <img src={form.coverImage} alt="표지" className="w-full h-full object-cover"
-                  onError={(e) => { e.target.style.display="none" }}
+    <div className="max-w-3xl mx-auto fade-in">
+      <button onClick={onCancel} className="text-sm mb-6 flex items-center gap-1.5" style={{ color: 'var(--muted)' }}>
+        ← 돌아가기
+      </button>
+      <h1 className="font-serif mb-10" style={{ fontSize: 36, fontWeight: 500, letterSpacing: '-.02em' }}>
+        {isEdit ? '책 수정' : '새 책 더하기'}
+      </h1>
+
+      <form onSubmit={handleSubmit} className="grid grid-cols-1 md:grid-cols-[auto_1fr] gap-10">
+        {/* 왼쪽 — 표지 */}
+        <div className="space-y-4">
+          <BookCover book={form} w={180} h={270} />
+          {/* 팔레트 */}
+          <div>
+            <div className={labelCls} style={labelStyle}>표지 색상</div>
+            <div className="grid grid-cols-4 gap-2">
+              {COVER_PALETTES.map(p => (
+                <button
+                  key={p.c} type="button"
+                  onClick={() => { set('coverColor', p.c); set('coverAccent', p.a); set('coverImage', ''); setUrlInput('') }}
+                  className="h-10 rounded-md transition-all"
+                  style={{
+                    background: p.c,
+                    outline: form.coverColor === p.c ? '2px solid var(--fg)' : '1px solid var(--border)',
+                    outlineOffset: form.coverColor === p.c ? 2 : 0,
+                  }}
                 />
-              : <div className="w-full h-full flex flex-col items-center justify-center text-amber-400 gap-1">
-                  <div className="text-3xl">📷</div>
-                  <div className="text-xs">표지 추가</div>
-                </div>
-            }
+              ))}
+            </div>
           </div>
-          <div className="flex-1 space-y-2.5 pt-1">
+          {/* 이미지 업로드 */}
+          <div className="space-y-2">
             <input type="file" ref={fileRef} accept="image/*" onChange={handleFile} className="hidden" />
             <button type="button" onClick={() => fileRef.current?.click()}
-              className="w-full py-2 border border-amber-300 rounded-xl text-sm text-amber-700 hover:bg-amber-50 transition-colors">
-              📁 파일 업로드
+              className="w-full py-2 rounded-lg text-xs"
+              style={{ border: '1px dashed var(--border)', color: 'var(--muted)' }}>
+              이미지 업로드
             </button>
             <input
-              type="url" placeholder="이미지 URL 입력..." value={urlInput}
-              onChange={(e) => handleUrl(e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300"
+              type="url" placeholder="또는 이미지 URL 입력..." value={urlInput}
+              onChange={e => { setUrlInput(e.target.value); set('coverImage', e.target.value) }}
+              className="w-full rounded-lg px-3 py-2 text-xs outline-none"
+              style={inputStyle}
             />
             {form.coverImage && (
               <button type="button"
-                onClick={() => { set("coverImage",""); setUrlInput(""); fileRef.current && (fileRef.current.value="") }}
-                className="text-xs text-red-400 hover:text-red-600">
+                onClick={() => { set('coverImage', ''); setUrlInput(''); if (fileRef.current) fileRef.current.value = '' }}
+                className="text-xs" style={{ color: '#ef4444' }}>
                 ✕ 이미지 제거
               </button>
             )}
           </div>
         </div>
 
-        {/* 제목·저자 */}
-        <div className="space-y-2.5">
+        {/* 오른쪽 — 필드 */}
+        <div className="space-y-5">
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">책 제목 <span className="text-red-400">*</span></label>
-            <input type="text" value={form.title} onChange={(e) => set("title", e.target.value)}
-              placeholder="책 제목을 입력하세요"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+            <label className={labelCls} style={labelStyle}>제목 *</label>
+            <input value={form.title} onChange={e => set('title', e.target.value)}
+              className={`${inputCls} font-serif text-lg`} style={inputStyle} placeholder="책 제목" />
           </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} style={labelStyle}>저자</label>
+              <input value={form.author} onChange={e => set('author', e.target.value)} className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label className={labelCls} style={labelStyle}>장르</label>
+              <input value={form.genre} onChange={e => set('genre', e.target.value)}
+                className={inputCls} style={inputStyle} placeholder="한국 소설 / 에세이 …" />
+            </div>
+          </div>
+
+          {/* 독서 상태 */}
           <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">저자</label>
-            <input type="text" value={form.author} onChange={(e) => set("author", e.target.value)}
-              placeholder="저자명을 입력하세요"
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+            <label className={labelCls} style={labelStyle}>독서 상태</label>
+            <div className="flex gap-2">
+              {Object.entries(STATUS_LABELS).map(([k, v]) => (
+                <button key={k} type="button" onClick={() => set('status', k)}
+                  className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all"
+                  style={form.status === k
+                    ? { background: 'var(--fg)', color: 'var(--bg)' }
+                    : { background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
+                  {v}
+                </button>
+              ))}
+            </div>
           </div>
-        </div>
 
-        {/* 날짜 */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">읽기 시작일</label>
-            <input type="date" value={form.startDate} onChange={(e) => set("startDate", e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} style={labelStyle}>시작일</label>
+              <input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} className={inputCls} style={inputStyle} />
+            </div>
+            <div>
+              <label className={labelCls} style={labelStyle}>완독일</label>
+              <input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} className={inputCls} style={inputStyle} />
+            </div>
           </div>
-          <div>
-            <label className="block text-sm font-semibold text-gray-700 mb-1">완독일</label>
-            <input type="date" value={form.endDate} onChange={(e) => set("endDate", e.target.value)}
-              className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-300 text-sm" />
-          </div>
-        </div>
 
-        {/* 독서 상태 */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">독서 상태</label>
-          <div className="flex gap-2">
-            {Object.entries(STATUS_LABELS).map(([k, v]) => (
-              <button key={k} type="button" onClick={() => set("status", k)}
-                className={`flex-1 py-2 rounded-xl text-sm font-medium transition-all ${
-                  form.status === k
-                    ? "bg-amber-400 text-white shadow-md scale-105"
-                    : "bg-gray-100 text-gray-600 hover:bg-amber-100"
-                }`}>
-                {v}
-              </button>
-            ))}
-          </div>
-        </div>
-
-        {/* 별점 */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-2">별점</label>
-          <StarRating value={form.rating} onChange={(v) => set("rating", v)} size="text-2xl" />
-        </div>
-
-        {/* 메모 */}
-        <div>
-          <div className="flex justify-between items-center mb-2">
-            <label className="text-sm font-semibold text-gray-700">📝 책 속 메모</label>
-            <button type="button" onClick={addMemo}
-              className="text-sm text-amber-600 hover:text-amber-800 font-semibold">
-              + 메모 추가
-            </button>
-          </div>
-          {form.memos.length === 0
-            ? <div className="text-center py-5 bg-amber-50 rounded-xl text-gray-400 text-sm border border-dashed border-amber-200">
-                인상 깊은 구절을 메모해 보세요!<br />
-                <button type="button" onClick={addMemo} className="mt-1.5 text-amber-500 underline text-xs">첫 메모 추가하기</button>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <label className={labelCls} style={labelStyle}>전체 쪽수</label>
+              <input type="number" value={form.pages} onChange={e => set('pages', e.target.value)} className={inputCls} style={inputStyle} placeholder="0" />
+            </div>
+            {form.status === 'reading' && (
+              <div>
+                <label className={labelCls} style={labelStyle}>현재 쪽</label>
+                <input type="number" value={form.currentPage} onChange={e => set('currentPage', e.target.value)} className={inputCls} style={inputStyle} placeholder="0" />
               </div>
-            : <div className="space-y-2">
+            )}
+          </div>
+
+          <div>
+            <label className={labelCls} style={labelStyle}>평점</label>
+            <StarRating value={form.rating} onChange={v => set('rating', v)} size={26} />
+          </div>
+
+          {/* 메모 */}
+          <div>
+            <div className="flex items-center justify-between mb-2">
+              <label className={labelCls} style={labelStyle}>책 속 메모 · {form.memos.length}</label>
+              <button type="button" onClick={addMemo} className="text-xs" style={{ color: 'var(--accent)' }}>+ 추가</button>
+            </div>
+            {form.memos.length === 0 ? (
+              <div className="text-center py-6 rounded-lg text-xs" style={{ border: '1px dashed var(--border)', color: 'var(--muted)' }}>
+                인상 깊은 구절을 적어두세요
+              </div>
+            ) : (
+              <div className="space-y-2">
                 {form.memos.map(m => (
-                  <MemoItem key={m.id} memo={m}
-                    onChange={(u) => updateMemo(m.id, u)}
-                    onDelete={() => deleteMemo(m.id)} />
+                  <div key={m.id} className="grid gap-2 items-start p-3 rounded-lg"
+                    style={{ gridTemplateColumns: '70px 1fr auto', background: 'var(--card)', border: '1px solid var(--border)' }}>
+                    <input type="number" value={m.page} placeholder="쪽"
+                      onChange={e => updateMemo(m.id, { ...m, page: e.target.value })}
+                      className="rounded px-2 py-1.5 text-sm text-center outline-none"
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+                    <textarea value={m.content} placeholder="인용구 또는 메모…" rows={2}
+                      onChange={e => updateMemo(m.id, { ...m, content: e.target.value })}
+                      className="rounded px-2 py-1.5 text-sm outline-none resize-none"
+                      style={{ background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--fg)' }} />
+                    <button type="button" onClick={() => deleteMemo(m.id)}
+                      className="text-lg px-1.5" style={{ color: 'var(--muted)' }}>×</button>
+                  </div>
                 ))}
               </div>
-          }
-        </div>
+            )}
+          </div>
 
-        {/* 느낀 점 */}
-        <div>
-          <label className="block text-sm font-semibold text-gray-700 mb-1">💭 느낀 점</label>
-          <textarea value={form.feelings} onChange={(e) => set("feelings", e.target.value)}
-            placeholder="책을 읽고 느낀 점을 자유롭게 적어보세요..."
-            className="w-full border border-gray-200 rounded-xl px-3 py-2.5 focus:outline-none focus:ring-2 focus:ring-amber-300 resize-none text-sm"
-            rows={5} />
-        </div>
+          <div>
+            <label className={labelCls} style={labelStyle}>느낀 점</label>
+            <textarea value={form.feelings} onChange={e => set('feelings', e.target.value)} rows={6}
+              className={`${inputCls} resize-none font-serif`}
+              style={{ ...inputStyle, fontSize: 15, lineHeight: 1.7 }}
+              placeholder="책을 읽고 남기고 싶은 생각을 자유롭게…" />
+          </div>
 
-        {/* 버튼 — 취소는 텍스트 링크, 주요 액션에 시선 집중 */}
-        <div className="flex items-center gap-4 pb-6">
-          <button type="button" onClick={onCancel}
-            className="text-sm text-gray-400 hover:text-gray-600 transition-colors underline underline-offset-2 px-1">
-            취소
-          </button>
-          <button type="submit" disabled={saving}
-            className="flex-1 py-3 bg-amber-400 hover:bg-amber-500 disabled:opacity-60 text-white rounded-xl font-bold transition-colors shadow-md text-sm">
-            {saving ? "저장 중..." : isEdit ? "✏️ 수정 완료" : "📚 저장하기"}
-          </button>
+          <div className="flex gap-3 pt-2">
+            <Btn type="button" variant="outline" onClick={onCancel} className="flex-1">취소</Btn>
+            <Btn type="submit" variant="primary" disabled={saving}
+              className="flex-[2]" style={{ opacity: saving ? 0.6 : 1 }}>
+              {saving ? '저장 중...' : isEdit ? '수정 완료' : '책장에 꽂기'}
+            </Btn>
+          </div>
         </div>
       </form>
     </div>
   )
 }
 
-/* ── 책 상세 보기 ────────────────────────── */
-const BookDetail = ({ book, isOwner, onEdit, onDelete }) => {
-  const readingDays = book.startDate && book.endDate
-    ? Math.ceil((new Date(book.endDate) - new Date(book.startDate)) / (1000*60*60*24)) + 1
-    : null
-
+/* ─────────────────────────────────────────────
+   테마/레이아웃 패널
+───────────────────────────────────────────── */
+const TweaksPanel = ({ open, tweaks, setTweak }) => {
+  if (!open) return null
   return (
-    <div className="max-w-xl mx-auto space-y-6 pb-8 fade-in">
-      <div className="flex gap-5 items-start">
-        <div className="w-28 h-40 rounded-xl overflow-hidden shadow-md flex-shrink-0">
-          {book.coverImage
-            ? <img src={book.coverImage} alt={book.title} className="w-full h-full object-cover"
-                onError={(e) => { e.target.style.display="none"; e.target.nextSibling.style.display="flex" }}
-              />
-            : null}
-          <div style={{ display: book.coverImage ? "none" : "flex" }} className="w-full h-full">
-            <DefaultCover title={book.title} />
-          </div>
-        </div>
-        <div className="flex-1 space-y-2">
-          <span className={`text-xs px-2.5 py-1 rounded-full font-semibold ${STATUS_COLORS[book.status]}`}>
-            {STATUS_LABELS[book.status]}
-          </span>
-          <h2 className="text-xl font-bold text-gray-800 leading-snug">{book.title}</h2>
-          {book.author && <p className="text-gray-500 text-sm">{book.author}</p>}
-          <StarRating value={book.rating} readonly size="text-xl" />
-          {book.startDate && (
-            <p className="text-gray-400 text-xs">
-              📅 {book.startDate}{book.endDate ? ` ~ ${book.endDate}` : " ~"}
-              {readingDays && <span className="ml-1 text-amber-500">({readingDays}일)</span>}
-            </p>
-          )}
-          {book.memos?.length > 0 && (
-            <p className="text-amber-500 text-xs">📝 메모 {book.memos.length}개</p>
-          )}
-        </div>
+    <div
+      className="fixed bottom-5 right-5 z-50 rounded-xl p-4 space-y-4"
+      style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 10px 40px rgba(0,0,0,.15)', minWidth: 240 }}
+    >
+      <div className="text-xs uppercase tracking-widest font-mono" style={{ color: 'var(--muted)', letterSpacing: '.15em' }}>
+        TWEAKS
       </div>
-
-      {book.memos?.length > 0 && (
-        <div className="space-y-2">
-          <h3 className="font-bold text-gray-700 text-sm">📝 책 속 메모 <span className="text-amber-500">({book.memos.length})</span></h3>
-          {book.memos.map(m => (
-            <div key={m.id} className="bg-amber-50 rounded-xl p-4 border-l-4 border-amber-400">
-              {m.page && (
-                <span className="text-xs font-bold text-amber-600 bg-amber-100 px-2 py-0.5 rounded-full mr-2">
-                  p.{m.page}
-                </span>
-              )}
-              <p className="text-gray-700 text-sm leading-relaxed mt-1.5 whitespace-pre-wrap">{m.content}</p>
-            </div>
-          ))}
-        </div>
-      )}
-
-      {book.feelings && (
-        <div className="space-y-2">
-          <h3 className="font-bold text-gray-700 text-sm">💭 느낀 점</h3>
-          <div className="bg-blue-50 rounded-xl p-4 border-l-4 border-blue-300">
-            <p className="text-gray-700 text-sm leading-relaxed whitespace-pre-wrap">{book.feelings}</p>
+      {[
+        { label: '테마',    key: 'theme',  opts: THEMES },
+        { label: '레이아웃', key: 'layout', opts: LAYOUTS },
+      ].map(({ label, key, opts }) => (
+        <div key={key}>
+          <div className="text-xs mb-2" style={{ color: 'var(--fg)' }}>{label}</div>
+          <div className="flex gap-1">
+            {opts.map(([k, v]) => (
+              <button key={k} onClick={() => setTweak(key, k)}
+                className="flex-1 py-2 rounded text-xs transition-all"
+                style={tweaks[key] === k
+                  ? { background: 'var(--fg)', color: 'var(--bg)' }
+                  : { background: 'var(--bg)', border: '1px solid var(--border)', color: 'var(--muted)' }}>
+                {v}
+              </button>
+            ))}
           </div>
         </div>
-      )}
-
-      {isOwner && (
-        <div className="flex gap-3">
-          <button onClick={onEdit}
-            className="flex-1 py-3 bg-amber-400 hover:bg-amber-500 text-white rounded-xl font-bold transition-colors shadow-md text-sm">
-            ✏️ 수정하기
-          </button>
-          <button onClick={onDelete}
-            className="py-3 px-5 border border-red-300 text-red-400 hover:bg-red-50 rounded-xl transition-colors text-sm font-medium">
-            🗑️ 삭제
-          </button>
-        </div>
-      )}
+      ))}
     </div>
   )
 }
 
-/* ── 메인 App ────────────────────────────── */
+/* ─────────────────────────────────────────────
+   메인 App
+───────────────────────────────────────────── */
 const App = () => {
-  const [user, setUser]                 = useState(null)
-  const [authLoading, setAuthLoading]   = useState(true)
-  const [books, setBooks]               = useState([])
+  const [user,         setUser]         = useState(null)
+  const [authLoading,  setAuthLoading]  = useState(true)
+  const [books,        setBooks]        = useState([])
   const [booksLoading, setBooksLoading] = useState(true)
-  const [view, setView]                 = useState("list")
+  const [view,         setView]         = useState('library')
   const [selectedBook, setSelectedBook] = useState(null)
-  const [search, setSearch]             = useState("")
-  const [filterStatus, setFilterStatus] = useState("all")
+  const [search,       setSearch]       = useState('')
+  const [filter,       setFilter]       = useState('all')
+  const [tweaks,       setTweaks]       = useState(() => ({ ...DEFAULT_TWEAKS, ...(loadTweaks() || {}) }))
+  const [tweaksOpen,   setTweaksOpen]   = useState(false)
 
-  /* 책 목록 로드 */
+  /* Firebase 초기화 */
   useEffect(() => {
-    loadBooks().then(loaded => {
-      setBooks(loaded)
-      setBooksLoading(false)
-    })
+    loadBooks().then(loaded => { setBooks(loaded); setBooksLoading(false) })
+  }, [])
+  useEffect(() => {
+    return onAuthStateChanged(auth, u => { setUser(u); setAuthLoading(false) })
   }, [])
 
-  /* 인증 상태 감지 */
+  /* 테마 DOM 동기화 */
   useEffect(() => {
-    return onAuthStateChanged(auth, (u) => {
-      setUser(u)
-      setAuthLoading(false)
-    })
-  }, [])
+    document.documentElement.setAttribute('data-theme', tweaks.theme)
+  }, [tweaks.theme])
 
-  const handleLogin = async () => {
+  const setTweak = (k, v) => {
+    setTweaks(prev => {
+      const next = { ...prev, [k]: v }
+      localStorage.setItem('dokseorok_tweaks', JSON.stringify(next))
+      return next
+    })
+  }
+
+  const handleLogin  = async () => {
     try { await signInWithPopup(auth, provider) }
     catch (e) { if (e.code !== 'auth/popup-closed-by-user') alert('로그인 실패: ' + e.message) }
   }
+  const handleLogout = async () => { await signOut(auth); goLibrary() }
 
-  const handleLogout = async () => {
-    await signOut(auth)
-    goList()
-  }
-
-  const goList   = () => { setView("list"); setSelectedBook(null) }
-  const goDetail = (b) => { setSelectedBook(b); setView("detail") }
+  const goLibrary = () => { setView('library'); setSelectedBook(null) }
+  const goDetail  = (b)  => { setSelectedBook(b); setView('detail') }
 
   const handleSave = async (book) => {
     await saveBook(book)
-    if (view === "edit") {
+    if (view === 'edit') {
       setBooks(prev => prev.map(b => b.id === book.id ? book : b))
       setSelectedBook(book)
-      setView("detail")
+      setView('detail')
     } else {
       setBooks(prev => [book, ...prev])
-      goList()
+      goLibrary()
     }
   }
 
@@ -451,214 +874,90 @@ const App = () => {
     if (!confirm(`"${selectedBook.title}"을(를) 삭제할까요?`)) return
     await removeBook(selectedBook.id)
     setBooks(prev => prev.filter(b => b.id !== selectedBook.id))
-    goList()
+    goLibrary()
   }
 
   const isOwner = user?.uid === 'tuIXqYWofGa39ujsoPvcVrviXUC2'
 
   if (booksLoading) return (
-    <div className="min-h-screen bg-amber-50 flex items-center justify-center">
-      <div className="text-5xl animate-bounce">📚</div>
+    <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-grad)' }}>
+      <div className="font-serif text-2xl animate-pulse" style={{ color: 'var(--muted)' }}>독서록</div>
     </div>
   )
 
-  const STATUS_ORDER = { reading: 0, completed: 1, want: 2 }
-
-  const filtered = books
-    .filter(b => {
-      const q = search.toLowerCase()
-      const matchQ = !q || b.title.toLowerCase().includes(q) || b.author?.toLowerCase().includes(q)
-      const matchS = filterStatus === "all" || b.status === filterStatus
-      return matchQ && matchS
-    })
-    .sort((a, b) => {
-      const so = STATUS_ORDER[a.status] - STATUS_ORDER[b.status]
-      if (so !== 0) return so
-      return b.createdAt - a.createdAt
-    })
-
-  const stats = {
-    total:     books.length,
-    completed: books.filter(b => b.status === "completed").length,
-    reading:   books.filter(b => b.status === "reading").length,
-  }
-
-  // 상태별 그룹 (검색·필터 적용 후)
-  const wantBooks      = filtered.filter(b => b.status === 'want')
-  const readingBooks   = filtered.filter(b => b.status === 'reading')
-  const completedBooks = filtered.filter(b => b.status === 'completed')
-
-  const headerTitle = {
-    list:   "📚 나의 독서록",
-    add:    "📖 책 추가",
-    edit:   "✏️ 책 수정",
-    detail: selectedBook?.title ?? "책 상세",
-  }[view]
-
-  const backTarget = { detail:"list", add:"list", edit:"detail" }
-
   return (
-    <div className="min-h-screen bg-amber-50">
+    <div style={{ position: 'relative', zIndex: 1 }}>
       {/* 헤더 */}
-      <header className="bg-white shadow-sm sticky top-0 z-20 border-b border-amber-100">
-        <div className="max-w-2xl mx-auto px-4 py-3.5 flex items-center justify-between">
-          <div className="flex items-center gap-2 min-w-0">
-            {view !== "list" && (
-              <button
-                onClick={() => {
-                  const t = backTarget[view]
-                  if (t === "list") goList()
-                  else setView("detail")
-                }}
-                className="text-gray-400 hover:text-gray-700 transition-colors mr-1 text-xl flex-shrink-0">
-                ‹
-              </button>
-            )}
-            <h1 className="text-lg font-bold text-amber-800 truncate">{headerTitle}</h1>
-          </div>
-          <div className="flex items-center gap-2 flex-shrink-0">
+      <header className="sticky top-0 z-10" style={{ background: 'var(--bg)', borderBottom: '1px solid var(--border)' }}>
+        <div className="max-w-6xl mx-auto px-6 py-4 flex items-center justify-between">
+          <button onClick={goLibrary} className="flex items-center gap-2" style={{ color: 'var(--fg)' }}>
+            <span className="font-serif" style={{ fontSize: 20, fontWeight: 500, letterSpacing: '-.01em' }}>독서록</span>
+            <span className="text-[10px] uppercase tracking-widest font-mono hidden sm:inline"
+              style={{ color: 'var(--muted)', letterSpacing: '.2em' }}>
+              READING · JOURNAL
+            </span>
+          </button>
+          <div className="flex items-center gap-3">
+            <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>{books.length} books</span>
+            {/* 테마 토글 버튼 */}
+            <button
+              onClick={() => setTweaksOpen(o => !o)}
+              className="text-xs px-3 py-1.5 rounded-lg transition-all"
+              style={tweaksOpen
+                ? { background: 'var(--fg)', color: 'var(--bg)' }
+                : { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--muted)' }}
+            >
+              ⊞ 테마
+            </button>
             {!authLoading && (
-              isOwner ? (
-                <>
-                  {view === "list" && (
-                    <button onClick={() => setView("add")}
-                      className="bg-amber-400 hover:bg-amber-500 text-white px-4 py-2 rounded-xl font-bold transition-colors text-sm shadow-sm">
-                      + 책 추가
-                    </button>
-                  )}
-                  <button onClick={handleLogout}
-                    className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100">
+              isOwner
+                ? <button onClick={handleLogout}
+                    className="text-xs px-2 py-1 rounded-lg transition-colors"
+                    style={{ color: 'var(--muted)' }}>
                     로그아웃
                   </button>
-                </>
-              ) : (
-                <button onClick={handleLogin}
-                  className="text-xs text-gray-400 hover:text-gray-600 transition-colors px-2 py-1 rounded-lg hover:bg-gray-100">
-                  🔑 관리자
-                </button>
-              )
+                : <button onClick={handleLogin}
+                    className="text-xs px-2 py-1 rounded-lg transition-colors"
+                    style={{ color: 'var(--muted)' }}>
+                    관리자
+                  </button>
             )}
           </div>
         </div>
       </header>
 
       {/* 메인 */}
-      <main className="max-w-2xl mx-auto px-4 py-5">
-
-        {/* 목록 */}
-        {view === "list" && (
-          <div className="fade-in space-y-5">
-            {books.length > 0 && (
-              <div className="grid grid-cols-3 gap-3">
-                {[
-                  { label:"전체", value: stats.total, color:"text-amber-600" },
-                  { label:"완독", value: stats.completed, color:"text-emerald-500" },
-                  { label:"읽는 중", value: stats.reading, color:"text-sky-500" },
-                ].map(s => (
-                  <div key={s.label} className="bg-white rounded-2xl p-3 text-center shadow-sm border border-amber-100">
-                    <div className={`text-2xl font-bold ${s.color}`}>{s.value}</div>
-                    <div className="text-xs text-gray-400 mt-0.5">{s.label}</div>
-                  </div>
-                ))}
-              </div>
-            )}
-
-            {/* 검색창 — 통계 카드·필터 탭과 여백 리듬을 맞춤 */}
-            <div className="relative mx-0.5">
-              <span className="absolute left-3.5 top-1/2 -translate-y-1/2 text-gray-400 text-sm">🔍</span>
-              <input
-                type="text" placeholder="제목 또는 저자로 검색..." value={search}
-                onChange={(e) => setSearch(e.target.value)}
-                className="w-full bg-white border border-gray-200 rounded-2xl px-4 py-2.5 pl-9 text-sm focus:outline-none focus:ring-2 focus:ring-amber-300 shadow-sm"
-              />
-              {search && (
-                <button onClick={() => setSearch("")}
-                  className="absolute right-3.5 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600 text-lg">×</button>
-              )}
-            </div>
-
-            <div className="flex gap-2 overflow-x-auto pb-1 -mx-1 px-1">
-              {[["all","전체"], ["reading","읽는 중"], ["completed","완독"], ["want","읽고 싶음"]].map(([k, v]) => (
-                <button key={k} onClick={() => setFilterStatus(k)}
-                  className={`flex-shrink-0 px-4 py-1.5 rounded-full text-xs font-semibold transition-all ${
-                    filterStatus === k
-                      ? "bg-amber-400 text-white shadow-sm"
-                      : "bg-white text-gray-500 hover:bg-amber-50 border border-gray-200"
-                  }`}>
-                  {v} {k !== "all" && <span className="ml-0.5 opacity-70">({books.filter(b=>b.status===k).length})</span>}
-                </button>
-              ))}
-            </div>
-
-            {filtered.length === 0 ? (
-              <div className="text-center py-16 space-y-3">
-                <div className="text-5xl">📖</div>
-                <p className="text-gray-400 text-sm">
-                  {books.length === 0 ? "아직 등록된 책이 없습니다." : "검색 결과가 없습니다."}
-                </p>
-              </div>
-            ) : filterStatus === "all" ? (
-              /* 전체 보기: 상태별 섹션 분리 (읽는 중 → 완독 → 읽고 싶음) */
-              <div className="space-y-8">
-                {readingBooks.length > 0 && (
-                  <section className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-amber-600">읽는 중</span>
-                      <div className="flex-1 h-px bg-amber-100" />
-                      <span className="text-xs text-gray-400">{readingBooks.length}권</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {readingBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
-                    </div>
-                  </section>
-                )}
-                {completedBooks.length > 0 && (
-                  <section className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-emerald-600">완독</span>
-                      <div className="flex-1 h-px bg-emerald-100" />
-                      <span className="text-xs text-gray-400">{completedBooks.length}권</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {completedBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
-                    </div>
-                  </section>
-                )}
-                {wantBooks.length > 0 && (
-                  <section className="space-y-3">
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-bold text-sky-600">읽고 싶음</span>
-                      <div className="flex-1 h-px bg-sky-100" />
-                      <span className="text-xs text-gray-400">{wantBooks.length}권</span>
-                    </div>
-                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                      {wantBooks.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
-                    </div>
-                  </section>
-                )}
-              </div>
-            ) : (
-              /* 개별 상태 필터: 단순 그리드 */
-              <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                {filtered.map(b => <BookCard key={b.id} book={b} onClick={goDetail} />)}
-              </div>
-            )}
-          </div>
-        )}
-
-        {view === "add" && isOwner && <BookForm onSave={handleSave} onCancel={goList} />}
-        {view === "detail" && selectedBook && (
-          <BookDetail
-            book={selectedBook}
+      <main className="max-w-6xl mx-auto px-6 py-10">
+        {view === 'library' && (
+          <LibraryView
+            books={books}
+            onSelect={goDetail}
+            layout={tweaks.layout}
+            search={search} setSearch={setSearch}
+            filter={filter} setFilter={setFilter}
+            onAdd={() => setView('add')}
             isOwner={isOwner}
-            onEdit={() => setView("edit")}
-            onDelete={handleDelete}
           />
         )}
-        {view === "edit" && selectedBook && isOwner && (
-          <BookForm book={selectedBook} onSave={handleSave} onCancel={() => setView("detail")} />
+        {view === 'detail' && selectedBook && (
+          <BookDetail
+            book={selectedBook}
+            onBack={goLibrary}
+            onEdit={() => setView('edit')}
+            onDelete={handleDelete}
+            isOwner={isOwner}
+          />
+        )}
+        {view === 'add' && isOwner && (
+          <BookForm onSave={handleSave} onCancel={goLibrary} />
+        )}
+        {view === 'edit' && selectedBook && isOwner && (
+          <BookForm book={selectedBook} onSave={handleSave} onCancel={() => setView('detail')} />
         )}
       </main>
+
+      {/* Tweaks 패널 */}
+      <TweaksPanel open={tweaksOpen} tweaks={tweaks} setTweak={setTweak} />
     </div>
   )
 }

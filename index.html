@@ -1,9 +1,19 @@
 <!DOCTYPE html>
-<html lang="ko">
+<html lang="ko" data-theme="paper">
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>📚 나의 독서록</title>
+  <title>독서록</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com" />
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Serif+KR:wght@300;400;500;600;700&family=IBM+Plex+Sans+KR:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet" />
+  <script>
+    // 저장된 테마를 미리 적용 (깜빡임 방지)
+    try {
+      const t = JSON.parse(localStorage.getItem('dokseorok_tweaks') || '{}')
+      if (t.theme) document.documentElement.setAttribute('data-theme', t.theme)
+    } catch(e) {}
+  </script>
 </head>
 <body>
   <div id="root"></div>

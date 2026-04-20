@@ -31,22 +31,23 @@
 ## 3. 기술 아키텍처
 
 ### 3.1 기술 스택
-- **Frontend**: React 18 (CDN), Tailwind CSS (CDN)
-- **빌드 도구**: Babel Standalone (JSX 트랜스파일)
-- **데이터 저장**: LocalStorage (별도 서버 불필요)
-- **배포**: 단일 HTML 파일로 제공 (서버 없이 브라우저에서 바로 실행)
+- **Frontend**: React 18 (Vite), Tailwind CSS (npm)
+- **빌드 도구**: Vite (ESM 번들링, 프로덕션 빌드)
+- **데이터 저장**: Firebase Firestore (클라우드)
+- **인증**: Firebase Authentication (Google 로그인)
+- **배포**: Vercel (GitHub 연동, 자동 배포)
 
 ### 3.2 시스템 구조
 ```
-reading_journal.html (단일 파일)
-├── App              # 전역 상태 관리, 뷰 라우팅
-├── Header           # 상단 네비게이션, 페이지 제목
-├── BookList         # 도서 그리드, 검색·필터, 통계 카드
-├── BookCard         # 개별 도서 미리보기 카드
-├── BookForm         # 도서 등록·수정 폼
-│   └── MemoItem     # 개별 메모 입력 컴포넌트
-├── BookDetail       # 도서 상세 조회 화면
-└── StarRating       # 별점 입력/표시 컴포넌트
+src/
+└── App.jsx          # 전역 상태 관리, 뷰 라우팅, Firebase 연동
+    ├── Header           # 상단 네비게이션, Google 로그인 버튼
+    ├── BookList         # 상태별 섹션(읽는 중/완독/읽고 싶음), 검색·필터, 통계 카드
+    ├── BookCard         # 개별 도서 미리보기 카드 (상태 배지 포함)
+    ├── BookForm         # 도서 등록·수정 폼
+    │   └── MemoItem     # 개별 메모 입력 컴포넌트
+    ├── BookDetail       # 도서 상세 조회 화면
+    └── StarRating       # 별점 입력/표시 컴포넌트
 ```
 
 ### 3.3 데이터 모델
@@ -113,6 +114,19 @@ reading_journal.html (단일 파일)
 - [x] React production 빌드 자동 적용
 - [x] vercel.json COOP 헤더 설정 (Firebase 로그인 팝업 에러 수정)
 
+### Phase 7: 디자인 시스템 전면 개편 ✅
+- [x] CSS 변수 기반 3가지 테마 (Paper / Library / Minimal) 도입
+- [x] Google Fonts 적용 — Noto Serif KR (헤딩) + IBM Plex Sans KR (본문) + IBM Plex Mono (라벨)
+- [x] 생성형 책 표지 컴포넌트 — 표지 이미지가 없을 때 제목/저자/색상으로 자동 생성
+- [x] 3가지 목록 레이아웃 — 책장(Shelf) / 그리드(Grid) / 리스트(List)
+- [x] Tweaks 패널 — 우측 하단 테마·레이아웃 실시간 전환 (localStorage 저장)
+- [x] 통계 카드 4종 (Books / Pages / Rating / Reading)
+- [x] 메모 인용구 디자인 개선 — 페이지 번호 좌측 세로 + accent 선 블록쿼트
+- [x] 상세 화면 진행률 바 (읽는 중 상태)
+- [x] 섹션 헤더 타이포그래피 — 한글 타이틀 + 영문 서브타이틀 + 카운터
+- [x] 표지 팔레트 8종 + 색상 선택 UI
+- [x] 깜빡임 방지 인라인 스크립트 (index.html 테마 사전 적용)
+
 ---
 
 ## 5. 리스크 및 고려사항
@@ -144,10 +158,13 @@ reading_journal.html (단일 파일)
 | 2026-04-18 | [기획변경] | 목록 뷰를 상태별 섹션(읽고 싶음/읽는 중/완독)으로 분리, 완독은 완독일 기준 년도별 그룹핑 추가 | PM 요청 |
 | 2026-04-18 | [기획변경] | 섹션 순서 및 필터 탭 순서 변경: 읽는 중 → 완독 → 읽고 싶음, 완독 년도별 그룹핑 제거 | PM 요청 |
 | 2026-04-18 | [내부수정] | 상태 배지를 카드 정보 영역 → 표지 이미지 우측 상단(absolute)으로 복원 | PM 요청 |
+| 2026-04-20 | [PM직접수정] | GitHub 원격 저장소 업데이트 확인 및 로컬 동기화 (git merge origin/main) | PM 요청 |
+| 2026-04-20 | [내부수정] | proposal.md 기술 스택·시스템 구조·다음 단계 섹션을 현재 코드 구조(Vite/Firebase)에 맞게 갱신 | 문서-코드 일치 |
+| 2026-04-20 | [기획변경] | Claude Design 핸드오프 기반 전면 디자인 개편 — CSS 변수 테마 시스템(Paper/Library/Minimal), 생성형 책 표지, 3가지 레이아웃(Shelf/Grid/List), Tweaks 패널, 세리프 타이포그래피 도입 | PM 요청 |
 
 ---
 
 ## 7. 결론 및 다음 단계
-1. `reading_journal.html` Phase 1 구현 완료 후 브라우저에서 즉시 테스트
-2. 사용 피드백 수집 후 Phase 2 기능 우선순위 조정
-3. 데이터 백업 기능(JSON export) 필요 여부 확인 후 Phase 3에 반영
+1. Phase 7까지 모든 핵심 기능 + 디자인 시스템 구현 완료 — 프로덕션 서비스 운영 중
+2. 사용 피드백 수집 후 추가 기능 우선순위 조정
+3. 데이터 백업 기능(JSON export) 필요 여부 확인 후 다음 Phase에 반영

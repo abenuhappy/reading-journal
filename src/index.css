@@ -2,11 +2,113 @@
 @tailwind components;
 @tailwind utilities;
 
-body { font-family: 'Apple SD Gothic Neo', 'Malgun Gothic', sans-serif; background: #fffbf2; }
-.book-card { transition: transform 0.2s ease, box-shadow 0.2s ease; }
-.book-card:hover { transform: translateY(-5px); box-shadow: 0 12px 28px rgba(0,0,0,0.12); }
+/* ── CSS 변수 ── 테마별 팔레트 */
+:root {
+  --font-serif: "Noto Serif KR", "Nanum Myeongjo", serif;
+  --font-sans:  "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif;
+  --font-mono:  "IBM Plex Mono", ui-monospace, monospace;
+}
+
+/* 테마 1: Paper (기본) */
+html[data-theme="paper"] {
+  --bg:               #f4ecd8;
+  --bg-grad:          linear-gradient(180deg, #f5ecd7 0%, #efe4c7 100%);
+  --card:             #fbf6e9;
+  --fg:               #2a2218;
+  --muted:            #8a7a5e;
+  --muted-border:     #d9cba8;
+  --border:           #e4d6b3;
+  --hover:            #f0e6c8;
+  --accent:           #a84c1a;
+  --shelf:            #8a6239;
+  --shelf-deep:       #5d3e20;
+  --status-want-bg:   #e6d9b3; --status-want-fg:      #6b5a2a;
+  --status-reading-bg:#d9c28a; --status-reading-fg:   #5c3f10;
+  --status-done-bg:   #c5bb92; --status-done-fg:      #3a3416;
+}
+
+/* 테마 2: Library (고전 다크) */
+html[data-theme="library"] {
+  --bg:               #1a1511;
+  --bg-grad:          radial-gradient(ellipse at top, #221b15 0%, #14100c 100%);
+  --card:             #241d16;
+  --fg:               #ede1c7;
+  --muted:            #8a7a5e;
+  --muted-border:     #3a2f22;
+  --border:           #3a2f22;
+  --hover:            #2a2218;
+  --accent:           #d4a34c;
+  --shelf:            #3a2a1a;
+  --shelf-deep:       #201410;
+  --status-want-bg:   #2a2218; --status-want-fg:      #b8a577;
+  --status-reading-bg:#4a3820; --status-reading-fg:   #e8c887;
+  --status-done-bg:   #2d3a25; --status-done-fg:      #a8c084;
+}
+
+/* 테마 3: Minimal */
+html[data-theme="minimal"] {
+  --bg:               #fafaf8;
+  --bg-grad:          #fafaf8;
+  --card:             #ffffff;
+  --fg:               #1a1a1a;
+  --muted:            #8a8a85;
+  --muted-border:     #e5e5e0;
+  --border:           #eeeeea;
+  --hover:            #f4f4f0;
+  --accent:           #1a1a1a;
+  --shelf:            #d5d2c8;
+  --shelf-deep:       #b0ad9f;
+  --status-want-bg:   #f0efe8; --status-want-fg:      #6a6a60;
+  --status-reading-bg:#e8eae0; --status-reading-fg:   #3f4a2a;
+  --status-done-bg:   #e0e4d6; --status-done-fg:      #2a3420;
+}
+
+/* ── 전역 기본 */
+body {
+  font-family: var(--font-sans);
+  background: var(--bg-grad);
+  color: var(--fg);
+  min-height: 100vh;
+  transition: background 0.4s ease, color 0.4s ease;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* 종이 질감 오버레이 */
+html[data-theme="paper"] body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image:
+    radial-gradient(circle at 20% 30%, rgba(139,94,40,.04) 0%, transparent 40%),
+    radial-gradient(circle at 80% 70%, rgba(139,94,40,.05) 0%, transparent 40%);
+}
+html[data-theme="library"] body::before {
+  content: "";
+  position: fixed; inset: 0; pointer-events: none; z-index: 0;
+  background-image: radial-gradient(circle at 50% 0%, rgba(212,163,76,.07) 0%, transparent 50%);
+}
+
+/* ── 애니메이션 */
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(6px); }
+  to   { opacity: 1; transform: translateY(0); }
+}
 .fade-in { animation: fadeIn 0.3s ease; }
-@keyframes fadeIn { from { opacity:0; transform: translateY(8px); } to { opacity:1; transform: translateY(0); } }
-input[type="date"]::-webkit-calendar-picker-indicator { cursor: pointer; opacity: 0.6; }
-::-webkit-scrollbar { width: 6px; }
-::-webkit-scrollbar-thumb { background: #e5c98a; border-radius: 3px; }
+
+/* ── 책 카드 hover */
+.book-card-hover { transition: transform 0.2s ease; }
+.book-card-hover:hover { transform: translateY(-4px); }
+
+/* ── 스크롤바 */
+::-webkit-scrollbar { width: 8px; height: 8px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--muted-border); border-radius: 4px; }
+
+/* ── date 피커 */
+input[type="date"]::-webkit-calendar-picker-indicator {
+  cursor: pointer; opacity: 0.5;
+}
+html[data-theme="library"] input[type="date"]::-webkit-calendar-picker-indicator {
+  filter: invert(1);
+}
+
+input:focus, textarea:focus { outline-color: var(--accent) !important; }
