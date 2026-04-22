@@ -596,7 +596,7 @@ const BookForm = ({ book, onSave, onCancel }) => {
     setSaving(false)
   }
 
-  const inputStyle = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)', boxSizing: 'border-box', maxWidth: '100%' }
+  const inputStyle = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)', boxSizing: 'border-box', maxWidth: '100%', WebkitAppearance: 'none' }
   const inputCls   = 'w-full min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors'
   const labelStyle = { color: 'var(--muted)', letterSpacing: '0.12em' }
   const labelCls   = 'block text-xs uppercase tracking-widest mb-1.5'
@@ -657,7 +657,7 @@ const BookForm = ({ book, onSave, onCancel }) => {
         </div>
 
         {/* 오른쪽 — 필드 */}
-        <div className="space-y-5">
+        <div className="space-y-5 min-w-0 overflow-hidden">
           <div>
             <label className={labelCls} style={labelStyle}>제목 *</label>
             <input value={form.title} onChange={e => set('title', e.target.value)}
@@ -691,7 +691,7 @@ const BookForm = ({ book, onSave, onCancel }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 overflow-hidden">
             <div className="min-w-0">
               <label className={labelCls} style={labelStyle}>시작일</label>
               <input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} className={inputCls} style={inputStyle} />

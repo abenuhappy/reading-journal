@@ -165,6 +165,7 @@ src/
 | 2026-04-22 | [내부수정] | 날짜 입력 필드(시작일/완독일) 그리드를 grid-cols-1 sm:grid-cols-2로 변경 — iOS Safari에서 두 필드가 겹치는 버그 수정 | PM 요청 |
 | 2026-04-22 | [기획변경] | "+ 책 추가" 버튼을 헤더 영역에서 제거하고 하단 우측 고정형 원형 플로팅 버튼(FAB)으로 교체 | PM 요청 |
 | 2026-04-22 | [내부수정] | 시작일·완독일 input에 boxSizing: border-box, maxWidth: 100%, min-w-0 추가 — iOS Safari에서 날짜 필드가 그리드를 초과하는 너비 버그 수정 | PM 요청 |
+| 2026-04-22 | [내부수정] | 오른쪽 필드 컬럼에 min-w-0 overflow-hidden, 날짜 그리드에 overflow-hidden, 인풋에 WebkitAppearance:none 추가 — iOS 가로/세로 모드 모두에서 날짜 필드 오버플로우 완전 수정 | PM 요청 |
 
 ---
 
