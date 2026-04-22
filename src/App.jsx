@@ -696,7 +696,7 @@ const BookForm = ({ book, onSave, onCancel }) => {
             </div>
           </div>
 
-          <div className="grid grid-cols-2 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
             <div>
               <label className={labelCls} style={labelStyle}>시작일</label>
               <input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} className={inputCls} style={inputStyle} />
