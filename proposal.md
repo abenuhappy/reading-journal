@@ -163,6 +163,8 @@ src/
 | 2026-04-20 | [기획변경] | Claude Design 핸드오프 기반 전면 디자인 개편 — CSS 변수 테마 시스템(Paper/Library/Minimal), 생성형 책 표지, 3가지 레이아웃(Shelf/Grid/List), Tweaks 패널, 세리프 타이포그래피 도입 | PM 요청 |
 | 2026-04-20 | [내부수정] | Btn 컴포넌트에 whitespace-nowrap·shrink-0 추가, padding 소폭 축소 — 모바일에서 "+ 책 추가" 버튼 줄바꿈 수정 | PM 요청 |
 | 2026-04-22 | [내부수정] | 날짜 입력 필드(시작일/완독일) 그리드를 grid-cols-1 sm:grid-cols-2로 변경 — iOS Safari에서 두 필드가 겹치는 버그 수정 | PM 요청 |
+| 2026-04-22 | [기획변경] | "+ 책 추가" 버튼을 헤더 영역에서 제거하고 하단 우측 고정형 원형 플로팅 버튼(FAB)으로 교체 | PM 요청 |
+| 2026-04-22 | [내부수정] | 시작일·완독일 input에 boxSizing: border-box, maxWidth: 100%, min-w-0 추가 — iOS Safari에서 날짜 필드가 그리드를 초과하는 너비 버그 수정 | PM 요청 |
 
 ---
 

@@ -320,11 +320,6 @@ const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFi
             <b style={{ color: 'var(--fg)' }}>{stats.pages.toLocaleString()}쪽</b>을 지나왔습니다.
           </p>
         </div>
-        {isOwner && (
-          <Btn variant="primary" onClick={onAdd} className="shrink-0">
-            <span className="mr-1">＋</span> 책 추가
-          </Btn>
-        )}
       </div>
 
       {/* 통계 카드 */}
@@ -601,8 +596,8 @@ const BookForm = ({ book, onSave, onCancel }) => {
     setSaving(false)
   }
 
-  const inputStyle = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)' }
-  const inputCls   = 'w-full rounded-lg px-3 py-2.5 text-sm outline-none transition-colors'
+  const inputStyle = { background: 'var(--card)', border: '1px solid var(--border)', color: 'var(--fg)', boxSizing: 'border-box', maxWidth: '100%' }
+  const inputCls   = 'w-full min-w-0 rounded-lg px-3 py-2.5 text-sm outline-none transition-colors'
   const labelStyle = { color: 'var(--muted)', letterSpacing: '0.12em' }
   const labelCls   = 'block text-xs uppercase tracking-widest mb-1.5'
 
@@ -697,11 +692,11 @@ const BookForm = ({ book, onSave, onCancel }) => {
           </div>
 
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-            <div>
+            <div className="min-w-0">
               <label className={labelCls} style={labelStyle}>시작일</label>
               <input type="date" value={form.startDate} onChange={e => set('startDate', e.target.value)} className={inputCls} style={inputStyle} />
             </div>
-            <div>
+            <div className="min-w-0">
               <label className={labelCls} style={labelStyle}>완독일</label>
               <input type="date" value={form.endDate} onChange={e => set('endDate', e.target.value)} className={inputCls} style={inputStyle} />
             </div>
@@ -955,6 +950,38 @@ const App = () => {
           <BookForm book={selectedBook} onSave={handleSave} onCancel={() => setView('detail')} />
         )}
       </main>
+
+      {/* 플로팅 책 추가 버튼 (library 뷰 + 소유자만) */}
+      {view === 'library' && isOwner && (
+        <button
+          onClick={() => setView('add')}
+          aria-label="책 추가"
+          style={{
+            position: 'fixed',
+            bottom: 32,
+            right: 32,
+            width: 56,
+            height: 56,
+            borderRadius: '50%',
+            background: 'var(--accent)',
+            color: '#fff',
+            fontSize: 28,
+            lineHeight: 1,
+            border: 'none',
+            cursor: 'pointer',
+            boxShadow: '0 4px 16px rgba(0,0,0,0.18)',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            zIndex: 100,
+            transition: 'transform 0.15s, box-shadow 0.15s',
+          }}
+          onMouseEnter={e => { e.currentTarget.style.transform = 'scale(1.1)'; e.currentTarget.style.boxShadow = '0 6px 24px rgba(0,0,0,0.24)' }}
+          onMouseLeave={e => { e.currentTarget.style.transform = 'scale(1)';   e.currentTarget.style.boxShadow = '0 4px 16px rgba(0,0,0,0.18)' }}
+        >
+          ＋
+        </button>
+      )}
 
       {/* Tweaks 패널 */}
       <TweaksPanel open={tweaksOpen} tweaks={tweaks} setTweak={setTweak} />
