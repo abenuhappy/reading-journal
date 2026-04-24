@@ -205,7 +205,7 @@ const Btn = ({ variant = 'primary', children, className = '', style: extStyle = 
 const StatCard = ({ label, value, hint, accent }) => (
   <div className="py-4 px-5 rounded-xl" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
     <div className="flex items-baseline gap-2">
-      <div className="font-serif" style={{ fontSize: 32, fontWeight: 500, color: accent || 'var(--fg)', lineHeight: 1 }}>
+      <div className="font-sans" style={{ fontSize: 24, fontWeight: 500, color: accent || 'var(--fg)', lineHeight: 1 }}>
         {value}
       </div>
       <div className="text-xs uppercase tracking-wider" style={{ color: 'var(--muted)', letterSpacing: '0.12em' }}>

@@ -176,6 +176,7 @@ src/
 | 2026-04-24 | [내부수정] | 책 목록 정렬 기준 변경 — `createdAt`·신규 추가 prepend 순서 대신 **시작일(`startDate`) 기준 내림차순**; 시작일 없음은 맨 뒤. Firestore + 클라이언트 이중 정렬 | PM 요청 |
 | 2026-04-24 | [내부수정] | 상태별 색상 구분 강화 — `index.css`에서 세 상태를 보라/청록/녹색 톤으로 분리; 목록 섹션 헤더에 상태색 원형 마커 추가; 상태 필터·책 폼 독서 상태 선택 시에도 동일 팔레트(`STATUS_CHIP_STYLE`) 적용 | PM 요청 |
 | 2026-04-24 | [기획변경] | Google Fonts 제거, 시스템·OS 기본 글꼴 스택(`--font-sans` / `--font-mono`); `tailwind.config.js`에서 `font-serif`·`font-mono`·`font-sans`를 동일 변수 정책에 연결 | PM 요청 |
+| 2026-04-24 | [내부수정] | 통계 카드(`StatCard`) 숫자: `font-sans`·`fontSize` 24px로 조정(시스템 산세리프·크기 정돈) | PM 요청 |
 
 ---
 
