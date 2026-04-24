@@ -119,7 +119,7 @@ src/
 - [x] Google Fonts 적용 — Noto Serif KR (헤딩) + IBM Plex Sans KR (본문) + IBM Plex Mono (라벨)
 - [x] 생성형 책 표지 컴포넌트 — 표지 이미지가 없을 때 제목/저자/색상으로 자동 생성
 - [x] 3가지 목록 레이아웃 — 책장(Shelf) / 그리드(Grid) / 리스트(List)
-- [x] Tweaks 패널 — 우측 하단 테마·레이아웃 실시간 전환 (localStorage 저장)
+- [x] Tweaks 패널 — 우측 하단 테마·레이아웃 실시간 전환 (localStorage 저장), z-index 110으로 책 추가 FAB(z-index 100)와 겹칠 때 클릭 충돌 방지
 - [x] 통계 카드 4종 (Books / Pages / Rating / Reading)
 - [x] 메모 인용구 디자인 개선 — 페이지 번호 좌측 세로 + accent 선 블록쿼트
 - [x] 상세 화면 진행률 바 (읽는 중 상태)
@@ -166,6 +166,9 @@ src/
 | 2026-04-22 | [기획변경] | "+ 책 추가" 버튼을 헤더 영역에서 제거하고 하단 우측 고정형 원형 플로팅 버튼(FAB)으로 교체 | PM 요청 |
 | 2026-04-22 | [내부수정] | 시작일·완독일 input에 boxSizing: border-box, maxWidth: 100%, min-w-0 추가 — iOS Safari에서 날짜 필드가 그리드를 초과하는 너비 버그 수정 | PM 요청 |
 | 2026-04-22 | [내부수정] | 오른쪽 필드 컬럼에 min-w-0 overflow-hidden, 날짜 그리드에 overflow-hidden, 인풋에 WebkitAppearance:none 추가 — iOS 가로/세로 모드 모두에서 날짜 필드 오버플로우 완전 수정 | PM 요청 |
+| 2026-04-24 | [내부수정] | Tweaks 패널 `z-50` → `z-[110]` — 하단 우측 FAB(＋)과 위치·스택이 겹쳐 테마/레이아웃 버튼 일부가 클릭되지 않던 문제 수정 | PM 요청 |
+| 2026-04-24 | [내부수정] | 리스트 레이아웃: 시작일 열 제거·제목/저자 열에 축소 표시(30×42 표지, 11–13px 타이포, `StatusBadge` 10px·2px/6px 패딩·52px 열, 평점은 숫자) | PM 요청 |
+| 2026-04-24 | [내부수정] | 리스트용 초소형 생성 표지(30×42): 표지 내 저자 제거, 제목 6px | PM 요청 |
 
 ---
 

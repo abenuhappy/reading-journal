@@ -90,6 +90,30 @@ const BookCover = ({ book, w = 120, h = 180, shadow = true }) => {
     )
   }
 
+  const wNum     = typeof w === 'number' && !Number.isNaN(w) ? w : 0
+  const hNum     = typeof h === 'number' && !Number.isNaN(h) ? h : 0
+  const isMicro  = wNum > 0 && wNum <= 40 && hNum > 0 && hNum <= 48
+
+  if (isMicro) {
+    return (
+      <div
+        className="relative rounded-sm overflow-hidden flex flex-col items-stretch flex-shrink-0"
+        style={{ width: w, height: h, background: coverColor, color: coverAccent, ...shadowStyle }}
+        title={book.title}
+      >
+        <div className="absolute inset-x-1 top-1 h-px opacity-40" style={{ background: coverAccent }} />
+        <div className="flex-1 flex items-center justify-center px-0.5 py-0.5 min-h-0">
+          <div
+            className="font-serif leading-tight text-center w-full line-clamp-4"
+            style={{ fontSize: 6, fontWeight: 600, wordBreak: 'keep-all' }}
+          >
+            {book.title}
+          </div>
+        </div>
+      </div>
+    )
+  }
+
   const titleSize  = w < 100 ? 13 : w < 140 ? 15 : 18
   const authorSize = w < 100 ? 9  : 11
 
@@ -118,18 +142,30 @@ const BookCover = ({ book, w = 120, h = 180, shadow = true }) => {
 }
 
 /* 상태 배지 */
-const StatusBadge = ({ status, small = false }) => {
+const StatusBadge = ({ status, small = false, list = false }) => {
   const styles = {
     want:      { bg: 'var(--status-want-bg)',    fg: 'var(--status-want-fg)' },
     reading:   { bg: 'var(--status-reading-bg)', fg: 'var(--status-reading-fg)' },
     completed: { bg: 'var(--status-done-bg)',    fg: 'var(--status-done-fg)' },
   }[status] || { bg: '#eee', fg: '#555' }
+  const label = STATUS_LABELS[status]
+  if (list) {
+    return (
+      <span
+        title={label}
+        className={`inline-block max-w-[52px] truncate rounded-full font-medium py-[2px] px-[6px] whitespace-nowrap ${status === 'want' ? 'text-[9px]' : 'text-[10px]'}`}
+        style={{ background: styles.bg, color: styles.fg, letterSpacing: status === 'want' ? '-0.04em' : '-0.01em' }}
+      >
+        {label}
+      </span>
+    )
+  }
   return (
     <span
       className={`inline-block rounded-full font-medium ${small ? 'text-[10px] px-2 py-0.5' : 'text-xs px-2.5 py-1'}`}
       style={{ background: styles.bg, color: styles.fg, letterSpacing: '-0.01em' }}
     >
-      {STATUS_LABELS[status]}
+      {label}
     </span>
   )
 }
@@ -222,50 +258,59 @@ const GridView = ({ books, onSelect }) => (
   </div>
 )
 
-/* 리스트 뷰 */
+/* 리스트 뷰 (모바일 컴팩트: 시작일은 제목·저자 열, 표지 30×42) */
+const LIST_VIEW_GRID = '30px minmax(0,1fr) 52px 2.5rem 3.5rem'
 const ListView = ({ books, onSelect }) => (
   <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
     <div
-      className="grid gap-4 px-5 py-3 text-[10px] uppercase tracking-widest border-b"
-      style={{ gridTemplateColumns: 'auto 2fr 1fr auto auto auto', color: 'var(--muted)', borderColor: 'var(--border)', letterSpacing: '0.14em' }}
+      className="grid gap-2 sm:gap-3 px-3 sm:px-5 py-2.5 sm:py-3 text-[10px] uppercase tracking-widest border-b items-center"
+      style={{ gridTemplateColumns: LIST_VIEW_GRID, color: 'var(--muted)', borderColor: 'var(--border)', letterSpacing: '0.14em' }}
     >
-      <div style={{ width: 44 }} />
+      <div className="w-[30px]" />
       <div>제목 · 저자</div>
-      <div>상태</div>
-      <div>평점</div>
-      <div>시작일</div>
-      <div>페이지</div>
+      <div className="text-center">상태</div>
+      <div className="text-center">평점</div>
+      <div className="text-right">페이지</div>
     </div>
     {books.map((b, i) => (
       <div
         key={b.id}
         onClick={() => onSelect(b)}
-        className="grid gap-4 px-5 py-4 items-center cursor-pointer transition-colors"
+        className="grid gap-2 sm:gap-3 px-3 sm:px-5 py-2 sm:py-2.5 items-center cursor-pointer transition-colors"
         style={{
-          gridTemplateColumns: 'auto 2fr 1fr auto auto auto',
+          gridTemplateColumns: LIST_VIEW_GRID,
           borderBottom: i < books.length - 1 ? '1px solid var(--border)' : 'none',
         }}
-        onMouseEnter={e => e.currentTarget.style.background = 'var(--hover)'}
-        onMouseLeave={e => e.currentTarget.style.background = 'transparent'}
+        onMouseEnter={e => { e.currentTarget.style.background = 'var(--hover)' }}
+        onMouseLeave={e => { e.currentTarget.style.background = 'transparent' }}
       >
-        <BookCover book={b} w={44} h={62} shadow={false} />
+        <BookCover book={b} w={30} h={42} shadow={false} />
         <div className="min-w-0">
-          <div className="font-serif text-[15px] truncate" style={{ color: 'var(--fg)' }}>{b.title}</div>
-          <div className="text-xs mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
+          <div
+            className="font-serif text-[12px] sm:text-[13px] leading-tight font-medium truncate"
+            style={{ color: 'var(--fg)' }}
+          >
+            {b.title}
+          </div>
+          <div className="text-[11px] leading-snug mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
             {b.author}{b.genre ? ` · ${b.genre}` : ''}
           </div>
+          {b.startDate && (
+            <div className="text-[10px] tabular-nums leading-none mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
+              {b.startDate.slice(5).replace('-', '/')}
+            </div>
+          )}
         </div>
-        <div><StatusBadge status={b.status} small /></div>
-        <div>
+        <div className="flex justify-center w-[52px] justify-self-center min-w-0">
+          <StatusBadge status={b.status} list />
+        </div>
+        <div className="text-center text-[12px] font-semibold tabular-nums min-w-0" style={{ color: 'var(--fg)' }}>
           {b.rating > 0
-            ? <StarRating value={b.rating} readonly size={12} />
-            : <span className="text-xs" style={{ color: 'var(--muted)' }}>—</span>}
+            ? b.rating.toFixed(1)
+            : <span className="text-[11px] font-normal" style={{ color: 'var(--muted)' }}>—</span>}
         </div>
-        <div className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
-          {b.startDate ? b.startDate.slice(5).replace('-', '/') : '—'}
-        </div>
-        <div className="text-xs tabular-nums" style={{ color: 'var(--muted)' }}>
-          {b.status === 'reading' && b.currentPage ? `${b.currentPage}/${b.pages || '?'}` : b.pages || '—'}
+        <div className="text-[11px] sm:text-xs tabular-nums text-right" style={{ color: 'var(--muted)' }}>
+          {b.status === 'reading' && b.currentPage ? `${b.currentPage} / ${b.pages || '?'}` : b.pages || '—'}
         </div>
       </div>
     ))}
@@ -779,7 +824,7 @@ const TweaksPanel = ({ open, tweaks, setTweak }) => {
   if (!open) return null
   return (
     <div
-      className="fixed bottom-5 right-5 z-50 rounded-xl p-4 space-y-4"
+      className="fixed bottom-5 right-5 z-[110] rounded-xl p-4 space-y-4"
       style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 10px 40px rgba(0,0,0,.15)', minWidth: 240 }}
     >
       <div className="text-xs uppercase tracking-widest font-mono" style={{ color: 'var(--muted)', letterSpacing: '.15em' }}>
