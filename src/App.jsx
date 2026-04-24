@@ -407,7 +407,7 @@ const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFi
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         <StatCard
           label="Books" value={stats.total}
-          hint={`완독 ${stats.completed} · 진행 ${stats.reading} · 예정 ${stats.want}`}
+          hint={`완독 ${stats.completed} · 진행 ${stats.reading}`}
         />
         <StatCard label="Pages" value={stats.pages.toLocaleString()} hint="완독 기준 총 쪽수" accent="var(--accent)" />
         <StatCard label="Rating" value={stats.avgRating || '—'} hint="평균 별점 (5점 만점)" accent="var(--accent)" />
