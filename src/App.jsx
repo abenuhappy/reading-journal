@@ -23,9 +23,19 @@ const provider = new GoogleAuthProvider()
 
 /* ── Firebase 헬퍼 */
 const loadBooks = async () => {
-  const snap = await getDocs(query(collection(db, 'books'), orderBy('createdAt', 'desc')))
+  const snap = await getDocs(query(collection(db, 'books'), orderBy('startDate', 'desc')))
   return snap.docs.map(d => d.data())
 }
+
+/** 시작일(ISO 날짜) 기준 내림차순. 시작일 없음은 맨 뒤. */
+const sortBooksByStartDateDesc = (list) => [...list].sort((a, b) => {
+  const as = (a.startDate && String(a.startDate).trim()) ? a.startDate : ''
+  const bs = (b.startDate && String(b.startDate).trim()) ? b.startDate : ''
+  if (!as && !bs) return 0
+  if (!as) return 1
+  if (!bs) return -1
+  return String(bs).localeCompare(String(as))
+})
 const saveBook   = async (book)   => setDoc(doc(db, 'books', String(book.id)), book)
 const removeBook = async (bookId) => deleteDoc(doc(db, 'books', String(bookId)))
 
@@ -258,7 +268,24 @@ const GridView = ({ books, onSelect }) => (
   </div>
 )
 
-/* 리스트 뷰 (모바일 컴팩트: 시작일은 제목·저자 열, 표지 30×42) */
+/* 리스트 뷰 (모바일 컴팩트: 기간은 제목·저자 열, 표지 30×42) */
+const formatDateYyMmDd = (iso) => {
+  const m = String(iso || '').match(/^(\d{4})-(\d{2})-(\d{2})/)
+  if (!m) return iso || ''
+  return `${m[1].slice(-2)}/${m[2]}/${m[3]}`
+}
+/** want: 없음 / reading: 시작만 / completed: 시작~종료 */
+const formatListBookDateLine = (b) => {
+  if (b.status === 'want') return ''
+  const s = b.startDate ? formatDateYyMmDd(b.startDate) : ''
+  const e = b.endDate ? formatDateYyMmDd(b.endDate) : ''
+  if (b.status === 'reading') return s
+  if (b.status === 'completed') {
+    if (s && e) return `${s}~${e}`
+    return s || e || ''
+  }
+  return s || e || ''
+}
 const LIST_VIEW_GRID = '30px minmax(0,1fr) 52px 2.5rem 3.5rem'
 const ListView = ({ books, onSelect }) => (
   <div className="rounded-xl overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -272,7 +299,9 @@ const ListView = ({ books, onSelect }) => (
       <div className="text-center">평점</div>
       <div className="text-right">페이지</div>
     </div>
-    {books.map((b, i) => (
+    {books.map((b, i) => {
+      const dateLine = formatListBookDateLine(b)
+      return (
       <div
         key={b.id}
         onClick={() => onSelect(b)}
@@ -295,9 +324,9 @@ const ListView = ({ books, onSelect }) => (
           <div className="text-[11px] leading-snug mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
             {b.author}{b.genre ? ` · ${b.genre}` : ''}
           </div>
-          {b.startDate && (
+          {dateLine && (
             <div className="text-[10px] tabular-nums leading-none mt-0.5 truncate" style={{ color: 'var(--muted)' }}>
-              {b.startDate.slice(5).replace('-', '/')}
+              {dateLine}
             </div>
           )}
         </div>
@@ -313,7 +342,8 @@ const ListView = ({ books, onSelect }) => (
           {b.status === 'reading' && b.currentPage ? `${b.currentPage} / ${b.pages || '?'}` : b.pages || '—'}
         </div>
       </div>
-    ))}
+      )
+    })}
   </div>
 )
 
@@ -919,6 +949,8 @@ const App = () => {
 
   const isOwner = user?.uid === 'tuIXqYWofGa39ujsoPvcVrviXUC2'
 
+  const booksSorted = useMemo(() => sortBooksByStartDateDesc(books), [books])
+
   if (booksLoading) return (
     <div className="min-h-screen flex items-center justify-center" style={{ background: 'var(--bg-grad)' }}>
       <div className="font-serif text-2xl animate-pulse" style={{ color: 'var(--muted)' }}>독서록</div>
@@ -938,7 +970,7 @@ const App = () => {
             </span>
           </button>
           <div className="flex items-center gap-3">
-            <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>{books.length} books</span>
+            <span className="font-mono text-xs" style={{ color: 'var(--muted)' }}>{booksSorted.length} books</span>
             {/* 테마 토글 버튼 */}
             <button
               onClick={() => setTweaksOpen(o => !o)}
@@ -970,7 +1002,7 @@ const App = () => {
       <main className="max-w-6xl mx-auto px-6 py-10">
         {view === 'library' && (
           <LibraryView
-            books={books}
+            books={booksSorted}
             onSelect={goDetail}
             layout={tweaks.layout}
             search={search} setSearch={setSearch}
