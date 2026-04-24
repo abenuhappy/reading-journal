@@ -4,9 +4,10 @@
 
 /* ── CSS 변수 ── 테마별 팔레트 */
 :root {
-  --font-serif: "Noto Serif KR", "Nanum Myeongjo", serif;
-  --font-sans:  "IBM Plex Sans KR", "Apple SD Gothic Neo", sans-serif;
-  --font-mono:  "IBM Plex Mono", ui-monospace, monospace;
+  /* 웹폰트 없이 OS·브라우저 기본(한글: Apple SD Gothic Neo / 맑은 고딕 폴백) */
+  --font-sans: system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Apple SD Gothic Neo", "Malgun Gothic", "Helvetica Neue", sans-serif;
+  --font-serif: var(--font-sans);
+  --font-mono: ui-monospace, "SFMono-Regular", "Cascadia Code", "Cascadia Mono", Consolas, "Malgun Gothic", monospace;
 }
 
 /* 테마 1: Paper (기본) */
@@ -22,9 +23,10 @@ html[data-theme="paper"] {
   --accent:           #a84c1a;
   --shelf:            #8a6239;
   --shelf-deep:       #5d3e20;
-  --status-want-bg:   #e6d9b3; --status-want-fg:      #6b5a2a;
-  --status-reading-bg:#d9c28a; --status-reading-fg:   #5c3f10;
-  --status-done-bg:   #c5bb92; --status-done-fg:      #3a3416;
+  /* 상태: 읽고 싶음(보라) / 읽는 중(청록) / 완독(녹색) — 색상 체계로 즉시 구분 */
+  --status-want-bg:   #e8e2f2; --status-want-fg:      #5c4a7a;
+  --status-reading-bg:#d4eaf0; --status-reading-fg:   #0d5c72;
+  --status-done-bg:   #d8ead8; --status-done-fg:      #2d5a32;
 }
 
 /* 테마 2: Library (고전 다크) */
@@ -40,9 +42,9 @@ html[data-theme="library"] {
   --accent:           #d4a34c;
   --shelf:            #3a2a1a;
   --shelf-deep:       #201410;
-  --status-want-bg:   #2a2218; --status-want-fg:      #b8a577;
-  --status-reading-bg:#4a3820; --status-reading-fg:   #e8c887;
-  --status-done-bg:   #2d3a25; --status-done-fg:      #a8c084;
+  --status-want-bg:   #2e2640; --status-want-fg:      #c9b8e8;
+  --status-reading-bg:#1e3a45; --status-reading-fg:   #7dd3e8;
+  --status-done-bg:   #243528; --status-done-fg:      #9fd4a4;
 }
 
 /* 테마 3: Minimal */
@@ -58,9 +60,9 @@ html[data-theme="minimal"] {
   --accent:           #1a1a1a;
   --shelf:            #d5d2c8;
   --shelf-deep:       #b0ad9f;
-  --status-want-bg:   #f0efe8; --status-want-fg:      #6a6a60;
-  --status-reading-bg:#e8eae0; --status-reading-fg:   #3f4a2a;
-  --status-done-bg:   #e0e4d6; --status-done-fg:      #2a3420;
+  --status-want-bg:   #f2eff7; --status-want-fg:      #5b4a78;
+  --status-reading-bg:#e8f4fa; --status-reading-fg:   #0a6b8c;
+  --status-done-bg:   #ecf5ec; --status-done-fg:      #1f6b2e;
 }
 
 /* ── 전역 기본 */

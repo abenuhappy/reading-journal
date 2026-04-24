@@ -116,7 +116,7 @@ src/
 
 ### Phase 7: 디자인 시스템 전면 개편 ✅
 - [x] CSS 변수 기반 3가지 테마 (Paper / Library / Minimal) 도입
-- [x] Google Fonts 적용 — Noto Serif KR (헤딩) + IBM Plex Sans KR (본문) + IBM Plex Mono (라벨)
+- [x] 타이포 그래피 — 웹폰트 없이 `system-ui`·`ui-monospace` 및 OS 폴백(한글: Apple SD Gothic Neo / Malgun Gothic); `:root` CSS 변수 + Tailwind `fontFamily`로 본문·`font-serif`·`font-mono` 정합
 - [x] 생성형 책 표지 컴포넌트 — 표지 이미지가 없을 때 제목/저자/색상으로 자동 생성
 - [x] 3가지 목록 레이아웃 — 책장(Shelf) / 그리드(Grid) / 리스트(List)
 - [x] 리스트 레이아웃 기간 표기 — 읽고 싶음은 미표시, 읽는 중은 시작일만(`yy/mm/dd`), 완독은 시작~완독(`yy/mm/dd~yy/mm/dd`); 날짜가 한쪽만 있으면 있는 값만 표시
@@ -128,6 +128,7 @@ src/
 - [x] 표지 팔레트 8종 + 색상 선택 UI
 - [x] 깜빡임 방지 인라인 스크립트 (index.html 테마 사전 적용)
 - [x] 책 목록 정렬 — **시작일(`startDate`) 기준 내림차순**(최근에 읽기 시작한 책이 위). Firestore 쿼리 `orderBy('startDate', 'desc')`와 클라이언트 `sortBooksByStartDateDesc`로 저장 직후에도 동일한 순서 유지. 시작일이 비어 있으면(예: 읽고 싶음만 등록) 해당 섹션·필터 결과에서 **맨 뒤**에 표시
+- [x] 독서 상태 색상 체계 — **읽고 싶음(보라 계열) / 읽는 중(청록·블루 계열) / 완독(녹색 계열)** 로 CSS 변수(`--status-*-bg`/`--status-*-fg`)를 테마(Paper·Library·Minimal)마다 재정의해 배지·섹션 점·개수·필터·등록 폼 선택 탭에서 한눈에 구분
 
 ---
 
@@ -173,6 +174,8 @@ src/
 | 2026-04-24 | [내부수정] | 리스트용 초소형 생성 표지(30×42): 표지 내 저자 제거, 제목 6px | PM 요청 |
 | 2026-04-24 | [내부수정] | 리스트 레이아웃 제목·저자 하단 기간 표기 — 형식 `yy/mm/dd` 및 `yy/mm/dd~yy/mm/dd`; 읽고 싶음은 숨김, 읽는 중은 시작일만, 완독은 시작~완독(한쪽만 있으면 해당 값만) | PM 요청 |
 | 2026-04-24 | [내부수정] | 책 목록 정렬 기준 변경 — `createdAt`·신규 추가 prepend 순서 대신 **시작일(`startDate`) 기준 내림차순**; 시작일 없음은 맨 뒤. Firestore + 클라이언트 이중 정렬 | PM 요청 |
+| 2026-04-24 | [내부수정] | 상태별 색상 구분 강화 — `index.css`에서 세 상태를 보라/청록/녹색 톤으로 분리; 목록 섹션 헤더에 상태색 원형 마커 추가; 상태 필터·책 폼 독서 상태 선택 시에도 동일 팔레트(`STATUS_CHIP_STYLE`) 적용 | PM 요청 |
+| 2026-04-24 | [기획변경] | Google Fonts 제거, 시스템·OS 기본 글꼴 스택(`--font-sans` / `--font-mono`); `tailwind.config.js`에서 `font-serif`·`font-mono`·`font-sans`를 동일 변수 정책에 연결 | PM 요청 |
 
 ---
 

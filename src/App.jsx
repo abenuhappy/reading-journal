@@ -47,6 +47,12 @@ const STATUS_META   = {
   completed: { label: '완독',      hint: 'Finished',          cssVar: '--status-done-fg' },
   want:      { label: '읽고 싶음', hint: 'Want to Read',      cssVar: '--status-want-fg' },
 }
+/** 필터·폼 등에서 선택된 탭/버튼에 쓰는 상태별 배경·글자색 */
+const STATUS_CHIP_STYLE = {
+  reading:   { background: 'var(--status-reading-bg)', color: 'var(--status-reading-fg)' },
+  completed: { background: 'var(--status-done-bg)',    color: 'var(--status-done-fg)' },
+  want:      { background: 'var(--status-want-bg)',    color: 'var(--status-want-fg)' },
+}
 
 /* ── 테마 유틸 */
 const THEMES  = [['paper','종이'],['library','서재'],['minimal','미니멀']]
@@ -433,7 +439,7 @@ const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFi
               key={k} onClick={() => setFilter(k)}
               className="px-3 py-1.5 rounded-md text-xs font-medium transition-all"
               style={filter === k
-                ? { background: 'var(--fg)', color: 'var(--bg)' }
+                ? (STATUS_CHIP_STYLE[k] || { background: 'var(--fg)', color: 'var(--bg)' })
                 : { color: 'var(--muted)' }}
             >
               {v}
@@ -461,6 +467,12 @@ const LibraryView = ({ books, onSelect, layout, search, setSearch, filter, setFi
                 <div className="flex items-baseline gap-4">
                   <div>
                     <div className="flex items-baseline gap-2.5">
+                      <span
+                        className="inline-block w-2 h-2 rounded-full flex-shrink-0 translate-y-px"
+                        style={{ backgroundColor: `var(${meta.cssVar})` }}
+                        title={meta.label}
+                        aria-hidden
+                      />
                       <h2 className="font-serif" style={{ fontSize: 26, fontWeight: 500, letterSpacing: '-.01em', color: 'var(--fg)' }}>
                         {meta.label}
                       </h2>
@@ -758,7 +770,7 @@ const BookForm = ({ book, onSave, onCancel }) => {
                 <button key={k} type="button" onClick={() => set('status', k)}
                   className="flex-1 py-2.5 rounded-lg text-sm font-medium transition-all"
                   style={form.status === k
-                    ? { background: 'var(--fg)', color: 'var(--bg)' }
+                    ? STATUS_CHIP_STYLE[k]
                     : { background: 'var(--card)', color: 'var(--muted)', border: '1px solid var(--border)' }}>
                   {v}
                 </button>
